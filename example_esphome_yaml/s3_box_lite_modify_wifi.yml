@@ -1,0 +1,403 @@
+# Based on https://github.com/esphome/firmware/blob/main/voice-assistant/esp32-s3-box-lite.yaml
+
+wifi:
+  ssid: #PUT YOUR SSID HERE!#
+  password: #PUT YOUR PASSWORD HERE!#
+  on_connect:
+    - script.execute: reset_display        
+  on_disconnect:
+    - script.execute: reset_display
+
+esphome:
+  name: esp32-s3-box-lite
+  friendly_name: ESP32 S3 Box Lite
+  name_add_mac_suffix: true
+  platformio_options:
+    board_build.flash_mode: dio
+  project:
+    name: esphome.on-device-wake-word
+    version: "1.0"
+  min_version: 2023.11.5
+  on_boot:
+      priority: 600
+      then: 
+        - display.page.show: initializing_page
+        - component.update: s3_box_lcd
+        - delay: 30s
+        - if:
+            condition:
+              lambda: return id(init_in_progress);
+            then:
+              - lambda: id(init_in_progress) = false;
+              - script.execute: reset_display
+
+esp32:
+  board: esp32s3box
+  flash_size: 16MB
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_ESP32S3_DEFAULT_CPU_FREQ_240: "y"
+      CONFIG_ESP32S3_DATA_CACHE_64KB: "y"
+      CONFIG_ESP32S3_DATA_CACHE_LINE_64B: "y"    
+
+psram:
+  mode: octal
+  speed: 80MHz      
+
+external_components:
+  - source: github://pr#5230
+    components: esp_adf
+    refresh: 0s
+  - source:
+      type: git
+      url: https://github.com/kahrendt/esphome-on-device-wake-word
+      ref: dev
+    refresh: 0s
+    components: [ voice_assistant ]  
+
+api:
+  on_client_connected:
+    - script.execute: reset_display
+  on_client_disconnected:
+    - script.execute: reset_display
+
+ota:
+logger:
+  hardware_uart: USB_SERIAL_JTAG
+  logs:
+    sensor: INFO
+
+button:
+  - platform: factory_reset
+    id: factory_reset_btn
+    name: Factory reset
+
+sensor:
+  - platform: debug
+    free:
+      name: "Heap Free"
+    block:
+      name: "Heap Max Block"
+    loop_time:
+      name: "Loop Time"
+    psram:
+      name: "Free PSRAM"
+  - platform: adc
+    pin: GPIO1
+    id: front_buttons
+    update_interval: 16ms
+    attenuation: 11db
+    on_value:
+      - lambda: |-
+          // none: 3.121
+          // left: 2.392
+          // middle: 1.965
+          // left+middle: 1.600
+          // right: 0.794
+          // left+right: 0.726
+          // middle+right: 0.682
+          // all: 0.632
+          if (x > 3) {
+            id(left).publish_state(false);
+            id(middle).publish_state(false);
+            id(right).publish_state(false);
+          } else if (x > 2.3) {
+            id(left).publish_state(true);
+            id(middle).publish_state(false);
+            id(right).publish_state(false);
+          } else if (x > 1.9) {
+            id(left).publish_state(false);
+            id(middle).publish_state(true);
+            id(right).publish_state(false);
+          } else if (x > 1) {
+            id(left).publish_state(true);
+            id(middle).publish_state(true);
+            id(right).publish_state(false);
+          } else if (x > 0.73) {
+            id(left).publish_state(false);
+            id(middle).publish_state(false);
+            id(right).publish_state(true);
+          } else if (x > 0.7) {
+            id(left).publish_state(true);
+            id(middle).publish_state(false);
+            id(right).publish_state(true);
+          } else if (x > 0.65) {
+            id(left).publish_state(false);
+            id(middle).publish_state(true);
+            id(right).publish_state(true);
+          } else {
+            id(left).publish_state(true);
+            id(middle).publish_state(true);
+            id(right).publish_state(true);
+          }
+binary_sensor:
+  - platform: template
+    id: left
+    name: "Left"
+  - platform: template
+    id: middle
+    name: "Middle"
+  - platform: template
+    id: right
+    name: "Right"
+
+  - platform: gpio
+    pin:
+      number: GPIO0
+      mode: INPUT_PULLUP
+      inverted: true
+    name: Left Top Button
+    disabled_by_default: true
+    on_multi_click:
+      - timing:
+          - ON for at least 250ms
+          - OFF for at least 50ms
+        then:
+          - if:
+              condition:
+                switch.is_off: use_local_wake_word
+              then:
+                - if:
+                    condition: voice_assistant.is_running
+                    then:
+                      - voice_assistant.stop:
+                      - script.execute: reset_display
+                    else:
+                      - voice_assistant.start:
+              else:
+                - voice_assistant.stop:
+                - delay: 1s
+                - script.execute: reset_display
+                - script.wait: reset_display
+                - voice_assistant.start_continuous:
+      - timing:
+          - ON for at least 10s
+        then:
+          - button.press: factory_reset_btn
+
+output:
+  - platform: ledc
+    pin: GPIO45
+    inverted: true
+    id: backlight_output
+
+light:
+  - platform: monochromatic
+    id: led
+    name: LCD Backlight
+    output: backlight_output
+    restore_mode: RESTORE_DEFAULT_ON
+    default_transition_length: 250ms
+
+esp_adf:
+  board: esp32s3boxlite
+
+microphone:
+  - platform: esp_adf
+    id: box_mic
+
+speaker:
+  - platform: esp_adf
+    id: box_speaker
+
+debug:
+  update_interval: 5s
+
+voice_assistant:
+  id: va
+  microphone: box_mic
+  speaker: box_speaker
+  use_wake_word: false
+  use_local_wake_word: true
+  noise_suppression_level: 2
+  auto_gain: 31dBFS
+  volume_multiplier: 2.0
+  vad_threshold: 3
+  on_listening:
+    - display.page.show: listening_page
+    - component.update: s3_box_lcd
+  on_stt_vad_end:
+    - display.page.show: thinking_page
+    - component.update: s3_box_lcd
+  on_tts_stream_start:
+    - display.page.show: replying_page
+    - component.update: s3_box_lcd
+  on_tts_stream_end:
+    - script.execute: reset_display
+  on_error:
+    - if:
+        condition:
+          lambda: return !id(init_in_progress);
+        then:  
+          - display.page.show: error_page
+          - component.update: s3_box_lcd
+          - delay: 1s
+          - script.execute: reset_display
+  on_client_connected:
+    - if:
+        condition:
+          switch.is_on: use_local_wake_word
+        then:
+          - voice_assistant.start_continuous:
+          - lambda: id(init_in_progress) = false;
+    - script.execute: reset_display
+  on_client_disconnected:
+    - script.execute: reset_display
+
+script:
+  - id: reset_display
+    then:
+      - if:
+          condition:
+            lambda: return !id(init_in_progress);
+          then:
+            - if:
+                condition:
+                  wifi.connected:
+                then:
+                  - if:
+                      condition:
+                        api.connected:
+                      then:
+                        - if:
+                            condition:
+                              voice_assistant.connected:
+                            then:
+                              - if:
+                                  condition:
+                                    switch.is_on: use_local_wake_word
+                                  then:
+                                    - display.page.show: idle_page
+                                    - component.update: s3_box_lcd
+                                  else:
+                                    - display.page.show: muted_page
+                                    - component.update: s3_box_lcd
+                            else:
+                              - display.page.show: no_pipeline_page
+                              - component.update: s3_box_lcd
+                      else:
+                        - display.page.show: no_api_page
+                        - component.update: s3_box_lcd
+                else:
+                  - display.page.show: no_wifi_page
+                  - component.update: s3_box_lcd                            
+
+switch:
+  - platform: template
+    name: Use on device wake word
+    id: use_local_wake_word
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    entity_category: config
+    on_turn_on:
+      - lambda: id(va).set_use_local_wake_word(true);
+      - if:
+          condition:
+            not:
+              - voice_assistant.is_running
+          then:
+            - voice_assistant.start_continuous
+      - script.execute: reset_display
+    on_turn_off:
+      - voice_assistant.stop
+      - lambda: id(va).set_use_local_wake_word(false);
+      - script.execute: reset_display
+
+
+globals:
+  - id: init_in_progress
+    type: bool
+    restore_value: no
+    initial_value: 'true'
+
+image:
+  # Standard path IDLE > LISTENING > THINKING > REPLYING
+  - file: https://github.com/esphome/firmware/raw/main/voice-assistant/casita/Idle@2x.png
+    id: casita_idle
+    resize: 200x200
+    type: RGB24
+    use_transparency: true
+  - file: https://github.com/esphome/firmware/raw/main/voice-assistant/casita/Normal@2x.png
+    id: casita_listening
+    resize: 200x200
+    type: RGB24
+    use_transparency: true
+  - file: https://github.com/esphome/firmware/raw/main/voice-assistant/casita/Focusing@2x.png
+    id: casita_thinking
+    resize: 200x200
+    type: RGB24
+    use_transparency: true
+  - file: https://github.com/esphome/firmware/raw/main/voice-assistant/casita/Happy@2x.png
+    id: casita_replying
+    resize: 200x200
+    type: RGB24
+    use_transparency: true
+
+  # Error cases (More specific flies to come soon)
+  - file: https://github.com/esphome/firmware/raw/main/voice-assistant/casita/Error@2x.png
+    id: casita_error
+    resize: 200x200
+    type: RGB24
+    use_transparency: true
+
+  # Initialization illustration
+  - file: https://github.com/esphome/firmware/raw/main/voice-assistant/casita/Initializing@2x.png
+    id: casita_initializing
+    resize: 200x200
+    type: RGB24
+    use_transparency: true    
+
+spi:
+  clk_pin: 7
+  mosi_pin: 6
+
+display:
+  - platform: ili9xxx
+    id: s3_box_lcd
+    model: S3BOX_LITE
+    data_rate: 40MHz
+    cs_pin: 5
+    dc_pin: 4
+    reset_pin: 48
+    update_interval: never
+    pages:
+      - id: idle_page
+        lambda: |-
+          it.fill(Color::BLACK);
+          it.image((it.get_width() / 2) - 100, (it.get_height() / 2) - 100, id(casita_idle));
+      - id: listening_page
+        lambda: |-
+          it.fill(Color::WHITE);
+          it.image((it.get_width() / 2) - 100, (it.get_height() / 2) - 100, id(casita_listening));
+      - id: thinking_page
+        lambda: |-
+          it.fill(Color::WHITE);
+          it.image((it.get_width() / 2) - 100, (it.get_height() / 2) - 105, id(casita_thinking));
+      - id: replying_page
+        lambda: |-
+          it.fill(Color::WHITE);
+          it.image((it.get_width() / 2) - 100, (it.get_height() / 2) - 100, id(casita_replying));
+      - id: error_page
+        lambda: |-
+          it.fill(Color::BLACK);
+          it.image((it.get_width() / 2) - 100, (it.get_height() / 2) - 100, id(casita_error));
+      - id: no_api_page
+        lambda: |-
+          it.fill(Color::BLACK);
+          it.image((it.get_width() / 2) - 100, (it.get_height() / 2) - 100, id(casita_error));
+      - id: no_wifi_page
+        lambda: |-
+          it.fill(Color::BLACK);
+          it.image((it.get_width() / 2) - 100, (it.get_height() / 2) - 100, id(casita_error));
+      - id: no_pipeline_page
+        lambda: |-
+          it.fill(Color::BLACK);
+          it.image((it.get_width() / 2) - 100, (it.get_height() / 2) - 100, id(casita_error));
+      - id: initializing_page
+        lambda: |-
+          it.fill(Color::BLACK);
+          it.image((it.get_width() / 2) - 100, (it.get_height() / 2) - 100, id(casita_initializing));
+      - id: muted_page
+        lambda: |-
+          it.fill(Color::BLACK);          
