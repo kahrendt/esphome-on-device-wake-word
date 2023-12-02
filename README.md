@@ -78,7 +78,7 @@ The lightweight streaming model performs inferences every 20 ms on the newest au
 
 When the streaming model predicts the wake word, the entire spectrogram is processed and confirmed using a modified [Broadcast Residual Learning model (BC-Resnet)](https://arxiv.org/pdf/2106.04140.pdf) by Kim, Chang, Lee, and Sung. This model has 7308 trainable parameters and requires 6.022 M floating point ops. The BC-Resnet inference is slow and is the biggest drawback to the current implementation. On an ESP32-S3, it takes approximately 700 ms to complete.
 
-## Next Steps and Plans for improvement.
+## Next Steps and Improvement Plans
 
 There are minimal false positives in real-world testing when using this two-pass approach. However, if the streaming model predicts the wake word, the component uses the slow BC-Resnet model to perform an inference. This delay causes a gap in processed audio and blocks ESPHome's main loop. There are several planned improvements to reduce the latency.
 
@@ -126,7 +126,7 @@ UNKNOWN_PERCENTAGE = 0
 DATASET_DIR =  'data_training/'
 ```
 
-We train the streaming DS-CNN model using
+We train the non-streaming BC-Resnet model using
 
 ```
 !python -m kws_streaming.train.model_train_eval \
@@ -178,7 +178,7 @@ bc_resnet \
 --max_pool 0
 ```
 
-We train the non-streaming BS-Resnet model using:
+We train the streaming DS-CNN model using:
 
 ```
 !python -m kws_streaming.train.model_train_eval \

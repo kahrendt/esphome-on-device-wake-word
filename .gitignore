@@ -138,3 +138,5 @@ sdkconfig.*
 .tests/
 
 /components
+
+data_training/

@@ -1,0 +1,73 @@
+Model: "model"
+_________________________________________________________________
+ Layer (type)                Output Shape              Param #   
+=================================================================
+ input_audio (InputLayer)    [(1, 1, 40)]              0         
+                                                                 
+ tf_op_layer_ExpandDims (Te  (1, 1, 40, 1)             0         
+ nsorFlowOpLayer)                                                
+                                                                 
+ stream (Stream)             (1, 1, 19, 16)            1056      
+                                                                 
+ batch_normalization (Batch  (1, 1, 19, 16)            48        
+ Normalization)                                                  
+                                                                 
+ activation (Activation)     (1, 1, 19, 16)            0         
+                                                                 
+ stream_1 (Stream)           (1, 1, 17, 16)            1072      
+                                                                 
+ batch_normalization_1 (Bat  (1, 1, 17, 16)            48        
+ chNormalization)                                                
+                                                                 
+ activation_1 (Activation)   (1, 1, 17, 16)            0         
+                                                                 
+ conv2d_1 (Conv2D)           (1, 1, 17, 16)            272       
+                                                                 
+ batch_normalization_2 (Bat  (1, 1, 17, 16)            48        
+ chNormalization)                                                
+                                                                 
+ activation_2 (Activation)   (1, 1, 17, 16)            0         
+                                                                 
+ stream_2 (Stream)           (1, 1, 13, 16)            1520      
+                                                                 
+ batch_normalization_3 (Bat  (1, 1, 13, 16)            48        
+ chNormalization)                                                
+                                                                 
+ activation_3 (Activation)   (1, 1, 13, 16)            0         
+                                                                 
+ conv2d_2 (Conv2D)           (1, 1, 13, 16)            272       
+                                                                 
+ batch_normalization_4 (Bat  (1, 1, 13, 16)            48        
+ chNormalization)                                                
+                                                                 
+ activation_4 (Activation)   (1, 1, 13, 16)            0         
+                                                                 
+ stream_3 (Stream)           (1, 1, 9, 16)             1200      
+                                                                 
+ batch_normalization_5 (Bat  (1, 1, 9, 16)             48        
+ chNormalization)                                                
+                                                                 
+ activation_5 (Activation)   (1, 1, 9, 16)             0         
+                                                                 
+ conv2d_3 (Conv2D)           (1, 1, 9, 16)             272       
+                                                                 
+ batch_normalization_6 (Bat  (1, 1, 9, 16)             48        
+ chNormalization)                                                
+                                                                 
+ activation_6 (Activation)   (1, 1, 9, 16)             0         
+                                                                 
+ stream_4 (Stream)           (1, 1, 1, 16)             11520     
+                                                                 
+ stream_5 (Stream)           (1, 16)                   16        
+                                                                 
+ dropout (Dropout)           (1, 16)                   0         
+                                                                 
+ dense (Dense)               (1, 2)                    34        
+                                                                 
+ activation_7 (Activation)   (1, 2)                    0         
+                                                                 
+=================================================================
+Total params: 17570 (68.63 KB)
+Trainable params: 2098 (8.20 KB)
+Non-trainable params: 15472 (60.44 KB)
+_________________________________________________________________

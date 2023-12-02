@@ -23,8 +23,7 @@ from kws_streaming.models import utils
 import kws_streaming.models.cnn as cnn
 from kws_streaming.train import inference
 from tensorflow_model_optimization.python.core.quantization.keras import quantize
-import sys
-sys.path.append('/Users/kahrendt/Documents/Hobbies/Machine_Learning/wakeword_tflite')
+
 def prepare_calibration_data(stream_model, total_stride, input_data):
   """Prepares calibration data for post training calibration."""
 

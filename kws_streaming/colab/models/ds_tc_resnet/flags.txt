@@ -1,1 +1,0 @@
-<kws_streaming.models.model_params.Params object at 0x2b07a54e0>
