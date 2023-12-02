@@ -1,0 +1,119 @@
+Model: "model"
+__________________________________________________________________________________________________
+ Layer (type)                Output Shape                 Param #   Connected to                  
+==================================================================================================
+ input_1 (InputLayer)        [(100, 49, 80)]              0         []                            
+                                                                                                  
+ tf_op_layer_ExpandDims (Te  [(100, 49, 1, 80)]           0         ['input_1[0][0]']             
+ nsorFlowOpLayer)                                                                                 
+                                                                                                  
+ stream (Stream)             (100, 49, 1, 80)             880       ['tf_op_layer_ExpandDims[0][0]
+                                                                    ']                            
+                                                                                                  
+ conv2d (Conv2D)             (100, 49, 1, 128)            10240     ['stream[0][0]']              
+                                                                                                  
+ batch_normalization (Batch  (100, 49, 1, 128)            512       ['conv2d[0][0]']              
+ Normalization)                                                                                   
+                                                                                                  
+ activation (Activation)     (100, 49, 1, 128)            0         ['batch_normalization[0][0]'] 
+                                                                                                  
+ dropout (Dropout)           (100, 49, 1, 128)            0         ['activation[0][0]']          
+                                                                                                  
+ stream_1 (Stream)           (100, 49, 1, 128)            640       ['dropout[0][0]']             
+                                                                                                  
+ conv2d_1 (Conv2D)           (100, 49, 1, 64)             8192      ['stream_1[0][0]']            
+                                                                                                  
+ conv2d_2 (Conv2D)           (100, 49, 1, 64)             8192      ['dropout[0][0]']             
+                                                                                                  
+ batch_normalization_1 (Bat  (100, 49, 1, 64)             256       ['conv2d_1[0][0]']            
+ chNormalization)                                                                                 
+                                                                                                  
+ batch_normalization_2 (Bat  (100, 49, 1, 64)             256       ['conv2d_2[0][0]']            
+ chNormalization)                                                                                 
+                                                                                                  
+ add (Add)                   (100, 49, 1, 64)             0         ['batch_normalization_1[0][0]'
+                                                                    , 'batch_normalization_2[0][0]
+                                                                    ']                            
+                                                                                                  
+ activation_1 (Activation)   (100, 49, 1, 64)             0         ['add[0][0]']                 
+                                                                                                  
+ dropout_1 (Dropout)         (100, 49, 1, 64)             0         ['activation_1[0][0]']        
+                                                                                                  
+ average_pooling2d (Average  (100, 24, 1, 64)             0         ['dropout_1[0][0]']           
+ Pooling2D)                                                                                       
+                                                                                                  
+ stream_2 (Stream)           (100, 24, 1, 64)             960       ['average_pooling2d[0][0]']   
+                                                                                                  
+ conv2d_3 (Conv2D)           (100, 24, 1, 64)             4096      ['stream_2[0][0]']            
+                                                                                                  
+ conv2d_4 (Conv2D)           (100, 24, 1, 64)             4096      ['average_pooling2d[0][0]']   
+                                                                                                  
+ batch_normalization_3 (Bat  (100, 24, 1, 64)             256       ['conv2d_3[0][0]']            
+ chNormalization)                                                                                 
+                                                                                                  
+ batch_normalization_4 (Bat  (100, 24, 1, 64)             256       ['conv2d_4[0][0]']            
+ chNormalization)                                                                                 
+                                                                                                  
+ add_1 (Add)                 (100, 24, 1, 64)             0         ['batch_normalization_3[0][0]'
+                                                                    , 'batch_normalization_4[0][0]
+                                                                    ']                            
+                                                                                                  
+ activation_2 (Activation)   (100, 24, 1, 64)             0         ['add_1[0][0]']               
+                                                                                                  
+ dropout_2 (Dropout)         (100, 24, 1, 64)             0         ['activation_2[0][0]']        
+                                                                                                  
+ stream_3 (Stream)           (100, 24, 1, 64)             1088      ['dropout_2[0][0]']           
+                                                                                                  
+ conv2d_5 (Conv2D)           (100, 24, 1, 64)             4096      ['stream_3[0][0]']            
+                                                                                                  
+ conv2d_6 (Conv2D)           (100, 24, 1, 64)             4096      ['dropout_2[0][0]']           
+                                                                                                  
+ batch_normalization_5 (Bat  (100, 24, 1, 64)             256       ['conv2d_5[0][0]']            
+ chNormalization)                                                                                 
+                                                                                                  
+ batch_normalization_6 (Bat  (100, 24, 1, 64)             256       ['conv2d_6[0][0]']            
+ chNormalization)                                                                                 
+                                                                                                  
+ add_2 (Add)                 (100, 24, 1, 64)             0         ['batch_normalization_5[0][0]'
+                                                                    , 'batch_normalization_6[0][0]
+                                                                    ']                            
+                                                                                                  
+ activation_3 (Activation)   (100, 24, 1, 64)             0         ['add_2[0][0]']               
+                                                                                                  
+ dropout_3 (Dropout)         (100, 24, 1, 64)             0         ['activation_3[0][0]']        
+                                                                                                  
+ stream_4 (Stream)           (100, 24, 1, 64)             960       ['dropout_3[0][0]']           
+                                                                                                  
+ conv2d_7 (Conv2D)           (100, 24, 1, 128)            8192      ['stream_4[0][0]']            
+                                                                                                  
+ batch_normalization_7 (Bat  (100, 24, 1, 128)            512       ['conv2d_7[0][0]']            
+ chNormalization)                                                                                 
+                                                                                                  
+ activation_4 (Activation)   (100, 24, 1, 128)            0         ['batch_normalization_7[0][0]'
+                                                                    ]                             
+                                                                                                  
+ dropout_4 (Dropout)         (100, 24, 1, 128)            0         ['activation_4[0][0]']        
+                                                                                                  
+ stream_5 (Stream)           (100, 24, 1, 128)            128       ['dropout_4[0][0]']           
+                                                                                                  
+ conv2d_8 (Conv2D)           (100, 24, 1, 128)            16384     ['stream_5[0][0]']            
+                                                                                                  
+ batch_normalization_8 (Bat  (100, 24, 1, 128)            512       ['conv2d_8[0][0]']            
+ chNormalization)                                                                                 
+                                                                                                  
+ activation_5 (Activation)   (100, 24, 1, 128)            0         ['batch_normalization_8[0][0]'
+                                                                    ]                             
+                                                                                                  
+ dropout_5 (Dropout)         (100, 24, 1, 128)            0         ['activation_5[0][0]']        
+                                                                                                  
+ stream_6 (Stream)           (100, 128)                   0         ['dropout_5[0][0]']           
+                                                                                                  
+ flatten (Flatten)           (100, 128)                   0         ['stream_6[0][0]']            
+                                                                                                  
+ dense (Dense)               (100, 3)                     387       ['flatten[0][0]']             
+                                                                                                  
+==================================================================================================
+Total params: 75699 (295.70 KB)
+Trainable params: 74163 (289.70 KB)
+Non-trainable params: 1536 (6.00 KB)
+__________________________________________________________________________________________________
