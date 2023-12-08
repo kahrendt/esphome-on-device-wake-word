@@ -13,8 +13,8 @@
 #include "tensorflow/lite/micro/micro_log.h"
 #include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
 
-#include "audio_preprocessor_int8_model_data.h"
-// #include "audio_preprocessor_float32_model_data.h"
+// #include "audio_preprocessor_int8_model_data.h"
+#include "audio_preprocessor_float32_model_data.h"
 #include "model.h"
 
 namespace esphome {
@@ -22,8 +22,8 @@ namespace voice_assistant {
 
 bool OnDeviceWakeWord::intialize_models() {
   ExternalRAMAllocator<uint8_t> arena_allocator(ExternalRAMAllocator<uint8_t>::ALLOW_FAILURE);
-  ExternalRAMAllocator<int8_t> spectrogram_allocator(ExternalRAMAllocator<int8_t>::ALLOW_FAILURE);
-  // ExternalRAMAllocator<float> spectrogram_allocator(ExternalRAMAllocator<float>::ALLOW_FAILURE);
+  // ExternalRAMAllocator<int8_t> spectrogram_allocator(ExternalRAMAllocator<int8_t>::ALLOW_FAILURE);
+  ExternalRAMAllocator<float> spectrogram_allocator(ExternalRAMAllocator<float>::ALLOW_FAILURE);
   ExternalRAMAllocator<int16_t> audio_samples_allocator(ExternalRAMAllocator<int16_t>::ALLOW_FAILURE);
 
   this->streaming_tensor_arena_ = arena_allocator.allocate(STREAMING_MODEL_ARENA_SIZE);
@@ -62,7 +62,7 @@ bool OnDeviceWakeWord::intialize_models() {
     return false;
   }
 
-  this->preprocessor_model_ = tflite::GetModel(g_audio_preprocessor_int8_tflite);
+  this->preprocessor_model_ = tflite::GetModel(g_audio_preprocessor_float32_tflite);
   if (this->preprocessor_model_->version() != TFLITE_SCHEMA_VERSION) {
     ESP_LOGE(TAG_LOCAL, "Wake word's audio preprocessor model's schema is not supported");
     return false;
@@ -127,8 +127,8 @@ bool OnDeviceWakeWord::intialize_models() {
 
   // Clear the spectrogram
   for (int n = 0; n < SPECTROGRAM_TOTAL_PIXELS; ++n) {
-    this->spectrogram_[n] = 0;
-    // this->spectrogram_[n] = 0.0;
+    // this->spectrogram_[n] = 0;
+    this->spectrogram_[n] = 0.0;
   }
 
   return true;
@@ -196,11 +196,11 @@ bool OnDeviceWakeWord::populate_feature_data_(ringbuf_handle_t &ring_buffer) {
   // +-----------+             +-----------+
   if (slices_to_keep > 0) {
     for (int dest_slice = 0; dest_slice < slices_to_keep; ++dest_slice) {
-      int8_t *dest_slice_data = this->spectrogram_ + (dest_slice * PREPROCESSOR_FEATURE_SIZE);
-      // float *dest_slice_data = this->spectrogram_ + (dest_slice * PREPROCESSOR_FEATURE_SIZE);
+      // int8_t *dest_slice_data = this->spectrogram_ + (dest_slice * PREPROCESSOR_FEATURE_SIZE);
+      float *dest_slice_data = this->spectrogram_ + (dest_slice * PREPROCESSOR_FEATURE_SIZE);
       const int src_slice = dest_slice + slices_to_drop;
-      const int8_t *src_slice_data = this->spectrogram_ + (src_slice * PREPROCESSOR_FEATURE_SIZE);
-      // const float *src_slice_data = this->spectrogram_ + (src_slice * PREPROCESSOR_FEATURE_SIZE);
+      // const int8_t *src_slice_data = this->spectrogram_ + (src_slice * PREPROCESSOR_FEATURE_SIZE);
+      const float *src_slice_data = this->spectrogram_ + (src_slice * PREPROCESSOR_FEATURE_SIZE);
       for (int i = 0; i < PREPROCESSOR_FEATURE_SIZE; ++i) {
         dest_slice_data[i] = src_slice_data[i];
       }
@@ -218,17 +218,25 @@ bool OnDeviceWakeWord::populate_feature_data_(ringbuf_handle_t &ring_buffer) {
         return false;
       }
 
-      int8_t *new_slice_data = this->spectrogram_ + (new_slice * PREPROCESSOR_FEATURE_SIZE);
-      // float *new_slice_data = this->spectrogram_ + (new_slice * PREPROCESSOR_FEATURE_SIZE);
+      // int8_t *new_slice_data = this->spectrogram_ + (new_slice * PREPROCESSOR_FEATURE_SIZE);
+      float *new_slice_data = this->spectrogram_ + (new_slice * PREPROCESSOR_FEATURE_SIZE);
 
       // Compute the features for the newest slice of audio samples and store them in the spectrogram
       if (!this->generate_single_feature(audio_samples, SAMPLE_DURATION_COUNT, new_slice_data)) {
         return false;
       }
 
+      TfLiteTensor *input = this->streaming_interpreter_->input(0);
+
+      float input_scale = input->params.scale;
+      int input_zero_point = input->params.zero_point;
+
       // Copy the newest slice's features as input into the streaming model
       for (int i = 0; i < PREPROCESSOR_FEATURE_SIZE; ++i) {
-        this->streaming_model_input_[i] = new_slice_data[i];
+        float feature = new_slice_data[i]/input_scale;
+        int casted_feature = static_cast<int>(new_slice_data[i]/input_scale) + input_zero_point;
+        this->streaming_model_input_[i] = static_cast<int8_t>(casted_feature);
+        // this->streaming_model_input_[i] = new_slice_data[i];
       }
 
       uint32_t prior_invoke = millis();
@@ -253,7 +261,8 @@ bool OnDeviceWakeWord::populate_feature_data_(ringbuf_handle_t &ring_buffer) {
       float probabilities[2];
 
       for (int i = 0; i < 2; ++i) {
-        probabilities[i] = (tflite::GetTensorData<int8_t>(output)[i]-output_zero_point)*output_scale;
+        probabilities[i] = (output->data.int8[i]-output_zero_point)*output_scale;
+        // probabilities[i] = (tflite::GetTensorData<int8_t>(output)[i]-output_zero_point)*output_scale;
       }
 
       if (probabilities[0] > STREAMING_MODEL_PROBABILITY_CUTOFF) {
@@ -268,8 +277,10 @@ bool OnDeviceWakeWord::populate_feature_data_(ringbuf_handle_t &ring_buffer) {
       // if ((output->data.f[0] > 0.7)) {
         ESP_LOGD(TAG_LOCAL, "wakeword=%.3f,unknown=%.3f", probabilities[0],
                  probabilities[1]);
-        ESP_LOGD(TAG_LOCAL, "wakeword=%d,unknown=%d", (tflite::GetTensorData<int8_t>(output)[0]-output_zero_point),
-                 (tflite::GetTensorData<int8_t>(output)[1]-output_zero_point));
+        // ESP_LOGD(TAG_LOCAL, "wakeword=%d,unknown=%d", (output->data.int8[0]-output_zero_point),
+        //          (output->data.int8[1]-output_zero_point));
+        // ESP_LOGD(TAG_LOCAL, "wakeword=%d,unknown=%d", (tflite::GetTensorData<int8_t>(output)[0]-output_zero_point),
+        //          (tflite::GetTensorData<int8_t>(output)[1]-output_zero_point));
       // }
     }
   }
@@ -397,7 +408,7 @@ bool OnDeviceWakeWord::register_nonstreaming_ops_(tflite::MicroMutableOpResolver
 }
 
 bool OnDeviceWakeWord::generate_single_feature(const int16_t *audio_data, const int audio_data_size,
-                                                     int8_t feature_output[PREPROCESSOR_FEATURE_SIZE]) {
+                                                     float feature_output[PREPROCESSOR_FEATURE_SIZE]) {
   TfLiteTensor *input = this->preprocessor_interperter_->input(0);
   TfLiteTensor *output = this->preprocessor_interperter_->output(0);
   std::copy_n(audio_data, audio_data_size, tflite::GetTensorData<int16_t>(input));
@@ -407,8 +418,8 @@ bool OnDeviceWakeWord::generate_single_feature(const int16_t *audio_data, const 
     return false;
   }
 
-  std::memcpy(feature_output, tflite::GetTensorData<int8_t>(output), PREPROCESSOR_FEATURE_SIZE * sizeof(int8_t));
-  // std::memcpy(feature_output, tflite::GetTensorData<float>(output), PREPROCESSOR_FEATURE_SIZE * sizeof(float));
+  // std::memcpy(feature_output, tflite::GetTensorData<int8_t>(output), PREPROCESSOR_FEATURE_SIZE * sizeof(int8_t));
+  std::memcpy(feature_output, tflite::GetTensorData<float>(output), PREPROCESSOR_FEATURE_SIZE * sizeof(float));
 
   return true;
 }
@@ -422,8 +433,8 @@ void OnDeviceWakeWord::copy_streaming_external_variables_() {
 
     size_t bytes_to_copy = output_tensor->bytes;
 
-    memcpy((void *) (tflite::GetTensorData<float>(input_tensor)),
-           (const void *) (tflite::GetTensorData<float>(output_tensor)), bytes_to_copy);
+    memcpy((void *) (tflite::GetTensorData<int8_t>(input_tensor)),
+           (const void *) (tflite::GetTensorData<int8_t>(output_tensor)), bytes_to_copy);
   }
 }
 
@@ -439,7 +450,7 @@ void OnDeviceWakeWord::clear_streaming_external_variables_() {
     }
 
     for (int j = 0; j < elements; ++j) {
-      tflite::GetTensorData<int8_t>(input_tensor)[j] = 0;
+      tflite::GetTensorData<int8_t>(input_tensor)[j] = input_tensor->params.zero_point;
       // input_tensor->data.f[j] = 0.0f;
     }
   }
