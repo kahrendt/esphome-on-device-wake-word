@@ -231,7 +231,7 @@ bool OnDeviceWakeWord::populate_feature_data_(ringbuf_handle_t &ring_buffer) {
         return false;
       }
 
-      ESP_LOGV(TAG_LOCAL, "Streaming Inference Latency=%u ms", (millis() - prior_invoke));
+      ESP_LOGI(TAG_LOCAL, "Streaming Inference Latency=%u ms", (millis() - prior_invoke));
 
       this->copy_streaming_external_variables_();
 
