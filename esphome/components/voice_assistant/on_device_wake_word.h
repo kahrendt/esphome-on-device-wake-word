@@ -17,7 +17,7 @@ static const char *const TAG_LOCAL = "local_wake_word";
 // Constants used for audio preprocessor model
 enum {
   PREPROCESSOR_FEATURE_SIZE = 40,   // The number of features the audio preprocessor generates per slice
-  PREPROCESSOR_FEATURE_COUNT = 64,  // The number of slices in the spectrogram
+  PREPROCESSOR_FEATURE_COUNT = 99,  // The number of slices in the spectrogram
   FEATURE_STRIDE_MS = 20,           // How frequently the preprocessor generates a new set of features
   FEATURE_DURATION_MS = 30,         // Duration of each slice used as input into the preprocessor
   AUDIO_SAMPLE_FREQUENCY = 16000,   // Audio sample frequency in hertz
@@ -31,9 +31,9 @@ enum {
 // Constants used for setting up tensor arenas
 // TODO: Optimize these values; they are currently much larger than needed
 enum {
-  STREAMING_MODEL_ARENA_SIZE = 1024 * 500,
+  STREAMING_MODEL_ARENA_SIZE = 1024 * 1000,
   STREAMING_MODEL_VARIABLE_ARENA_SIZE = 10 * 1000,
-  NONSTREAMING_MODEL_ARENA_SIZE = 1024 * 500,
+  NONSTREAMING_MODEL_ARENA_SIZE = 1024 * 1000,
   PREPROCESSOR_ARENA_SIZE = 16 * 1024,
 };
 
