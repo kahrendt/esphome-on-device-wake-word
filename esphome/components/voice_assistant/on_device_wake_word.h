@@ -62,10 +62,10 @@ class OnDeviceWakeWord {
   uint8_t *nonstreaming_tensor_arena_{nullptr};
   uint8_t *preprocessor_tensor_arena_{nullptr};
 
-  int8_t *spectrogram_{nullptr};
+  // int8_t *spectrogram_{nullptr};
   int8_t *streaming_model_input_{nullptr};
   int8_t *nonstreaming_model_input_{nullptr};
-  // float *spectrogram_{nullptr};
+  float *spectrogram_{nullptr};
   // float *streaming_model_input_{nullptr};
   // float *nonstreaming_model_input_{nullptr};
 
@@ -97,7 +97,7 @@ class OnDeviceWakeWord {
 
   // Adapted from TFLite micro speech example
   bool generate_single_feature(const int16_t *audio_data, const int audio_data_size,
-                                     int8_t feature_output[PREPROCESSOR_FEATURE_SIZE]);
+                                     float feature_output[PREPROCESSOR_FEATURE_SIZE]);
 };
 }  // namespace voice_assistant
 }  // namespace esphome
