@@ -24,15 +24,15 @@ bool OnDeviceWakeWord::intialize_models() {
   ExternalRAMAllocator<float> spectrogram_allocator(ExternalRAMAllocator<float>::ALLOW_FAILURE);
   ExternalRAMAllocator<int16_t> audio_samples_allocator(ExternalRAMAllocator<int16_t>::ALLOW_FAILURE);
 
-  this->streaming_tensor_arena_ = arena_allocator.allocate(STREAMING_MODEL_ARENA_SIZE);
-  if (this->streaming_tensor_arena_ == nullptr) {
-    ESP_LOGE(TAG_LOCAL, "Could not allocate the streaming model's tensor arena.");
-    return false;
-  }
-
   this->nonstreaming_tensor_arena_ = arena_allocator.allocate(NONSTREAMING_MODEL_ARENA_SIZE);
   if (this->nonstreaming_tensor_arena_ == nullptr) {
     ESP_LOGE(TAG_LOCAL, "Could not allocate the nonstreaming model's tensor arena.");
+    return false;
+  }
+
+  this->streaming_tensor_arena_ = arena_allocator.allocate(STREAMING_MODEL_ARENA_SIZE);
+  if (this->streaming_tensor_arena_ == nullptr) {
+    ESP_LOGE(TAG_LOCAL, "Could not allocate the streaming model's tensor arena.");
     return false;
   }
 
@@ -132,6 +132,7 @@ bool OnDeviceWakeWord::intialize_models() {
 
 bool OnDeviceWakeWord::run_inference(ringbuf_handle_t &ring_buffer) {
   this->populate_feature_data_(ring_buffer);
+
   if (this->succesive_wake_words >= STREAMING_MODEL_SUCCESSIVE_WORDS_NEEDED) {
     ESP_LOGD(TAG_LOCAL, "Streaming model predicted the wake word");
     this->succesive_wake_words = 0;
@@ -245,10 +246,10 @@ bool OnDeviceWakeWord::populate_feature_data_(ringbuf_handle_t &ring_buffer) {
         }
       }
 
-      if ((output->data.f[0] > 0.7)) {
+      // if ((output->data.f[0] > 0.7)) {
         ESP_LOGD(TAG_LOCAL, "wakeword=%.3f,unknown=%.3f", tflite::GetTensorData<float>(output)[0],
                  tflite::GetTensorData<float>(output)[1]);
-      }
+      // }
     }
   }
 
@@ -393,11 +394,28 @@ bool OnDeviceWakeWord::generate_single_float_feature(const int16_t *audio_data, 
 void OnDeviceWakeWord::copy_streaming_external_variables_() {
   const size_t external_variables_count = this->streaming_interpreter_->inputs_size();
 
+  // for (int i = 1; i < 3; ++i) {
+  //   TfLiteTensor *input_tensor = this->streaming_interpreter_->input(i);
+  //   TfLiteTensor *output_tensor = this->streaming_interpreter_->output(i);
+
+  //   size_t bytes_to_copy = output_tensor->bytes;
+
+  //   if (input_tensor->bytes != bytes_to_copy) {
+  //     ESP_LOGE(TAG_LOCAL, "Mismatch in external variable tensor sizes!");
+  //   }
+
+  //   memcpy((void *) (tflite::GetTensorData<float>(input_tensor)),
+  //          (const void *) (tflite::GetTensorData<float>(output_tensor)), bytes_to_copy);
+  // }
   for (int i = 1; i < external_variables_count; ++i) {
     TfLiteTensor *input_tensor = this->streaming_interpreter_->input(i);
     TfLiteTensor *output_tensor = this->streaming_interpreter_->output(i);
 
     size_t bytes_to_copy = output_tensor->bytes;
+
+    if (input_tensor->bytes != bytes_to_copy) {
+      ESP_LOGE(TAG_LOCAL, "Mismatch in external variable tensor sizes!");
+    }
 
     memcpy((void *) (tflite::GetTensorData<float>(input_tensor)),
            (const void *) (tflite::GetTensorData<float>(output_tensor)), bytes_to_copy);
@@ -406,6 +424,7 @@ void OnDeviceWakeWord::copy_streaming_external_variables_() {
 
 void OnDeviceWakeWord::clear_streaming_external_variables_() {
   const size_t external_variables_count = this->streaming_interpreter_->inputs_size();
+
   for (int i = 1; i < external_variables_count; ++i) {
     TfLiteTensor *input_tensor = this->streaming_interpreter_->input(i);
 
