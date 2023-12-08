@@ -17,7 +17,7 @@ static const char *const TAG_LOCAL = "local_wake_word";
 // Constants used for audio preprocessor model
 enum {
   PREPROCESSOR_FEATURE_SIZE = 40,   // The number of features the audio preprocessor generates per slice
-  PREPROCESSOR_FEATURE_COUNT = 64,  // The number of slices in the spectrogram
+  PREPROCESSOR_FEATURE_COUNT = 99,  // The number of slices in the spectrogram
   FEATURE_STRIDE_MS = 20,           // How frequently the preprocessor generates a new set of features
   FEATURE_DURATION_MS = 30,         // Duration of each slice used as input into the preprocessor
   AUDIO_SAMPLE_FREQUENCY = 16000,   // Audio sample frequency in hertz
