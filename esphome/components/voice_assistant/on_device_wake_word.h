@@ -17,7 +17,7 @@ static const char *const TAG_LOCAL = "local_wake_word";
 // Constants used for audio preprocessor model
 enum {
   PREPROCESSOR_FEATURE_SIZE = 40,   // The number of features the audio preprocessor generates per slice
-  PREPROCESSOR_FEATURE_COUNT = 99,  // The number of slices in the spectrogram
+  PREPROCESSOR_FEATURE_COUNT = 64,  // The number of slices in the spectrogram
   FEATURE_STRIDE_MS = 20,           // How frequently the preprocessor generates a new set of features
   FEATURE_DURATION_MS = 30,         // Duration of each slice used as input into the preprocessor
   AUDIO_SAMPLE_FREQUENCY = 16000,   // Audio sample frequency in hertz
@@ -42,7 +42,7 @@ static constexpr float NONSTREAMING_MODEL_PROBABILITY_CUTOFF = 0.97;
 
 // The nonstreaming model seems to more accurately detect the wake word if the phrase is in the middle of the
 // spectrogram; however, this causes more latency => 40*20ms = 800 ms
-static constexpr int STREAMING_MODEL_SUCCESSIVE_WORDS_NEEDED = 40;
+static constexpr int STREAMING_MODEL_SUCCESSIVE_WORDS_NEEDED = 5;
 
 class OnDeviceWakeWord {
  public:
@@ -62,9 +62,12 @@ class OnDeviceWakeWord {
   uint8_t *nonstreaming_tensor_arena_{nullptr};
   uint8_t *preprocessor_tensor_arena_{nullptr};
 
-  float *spectrogram_{nullptr};
-  float *streaming_model_input_{nullptr};
-  float *nonstreaming_model_input_{nullptr};
+  int8_t *spectrogram_{nullptr};
+  int8_t *streaming_model_input_{nullptr};
+  int8_t *nonstreaming_model_input_{nullptr};
+  // float *spectrogram_{nullptr};
+  // float *streaming_model_input_{nullptr};
+  // float *nonstreaming_model_input_{nullptr};
 
   // Stores audio fed into feature generator
   int16_t *preprocessor_audio_buffer_;
@@ -93,8 +96,8 @@ class OnDeviceWakeWord {
   bool register_nonstreaming_ops_(tflite::MicroMutableOpResolver<9> &op_resolver);
 
   // Adapted from TFLite micro speech example
-  bool generate_single_float_feature(const int16_t *audio_data, const int audio_data_size,
-                                     float feature_output[PREPROCESSOR_FEATURE_SIZE]);
+  bool generate_single_feature(const int16_t *audio_data, const int audio_data_size,
+                                     int8_t feature_output[PREPROCESSOR_FEATURE_SIZE]);
 };
 }  // namespace voice_assistant
 }  // namespace esphome
