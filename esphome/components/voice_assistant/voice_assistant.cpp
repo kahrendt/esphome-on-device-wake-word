@@ -18,7 +18,7 @@ static const char *const TAG = "voice_assistant";
 #endif
 
 static const size_t SAMPLE_RATE_HZ = 16000;
-static const size_t INPUT_BUFFER_SIZE = 32 * SAMPLE_RATE_HZ / 1000;  // 32ms * 16kHz / 1000ms
+static const size_t INPUT_BUFFER_SIZE = 300 * SAMPLE_RATE_HZ / 1000;  // 32ms * 16kHz / 1000ms
 static const size_t BUFFER_SIZE = 1000 * SAMPLE_RATE_HZ / 1000;      // 1s
 static const size_t SEND_BUFFER_SIZE = INPUT_BUFFER_SIZE * sizeof(int16_t);
 static const size_t RECEIVE_SIZE = 1024;
@@ -191,7 +191,7 @@ void VoiceAssistant::loop() {
     }
     case State::WAITING_FOR_WAKE_WORD: {
       size_t bytes_read = this->read_microphone_();
-      bool wakeword_detected = this->local_wake_word_->run_inference(this->ring_buffer_);
+      bool wakeword_detected = this->local_wake_word_->detect_wakeword(this->ring_buffer_);
 
       if (wakeword_detected) {
         this->set_state_(State::START_PIPELINE, State::STREAMING_MICROPHONE);
