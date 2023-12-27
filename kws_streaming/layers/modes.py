@@ -76,6 +76,11 @@ def get_input_data_shape(flags, mode):
       data_shape = (flags.spectrogram_length, flags.mel_num_bins,)
     else:
       data_shape = (1, flags.mel_num_bins,)  # streaming
+  elif flags.preprocess == 'none':
+    if mode in (Modes.TRAINING, Modes.NON_STREAM_INFERENCE):
+      data_shape = (flags.spectrogram_length, flags.mel_num_bins,)
+    else:
+      data_shape = (1, flags.mel_num_bins,)  # streaming
   else:
     raise ValueError('Unknown preprocess mode "%s"' % flags.preprocess)
   return data_shape

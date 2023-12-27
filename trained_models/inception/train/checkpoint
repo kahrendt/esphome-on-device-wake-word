@@ -1,0 +1,2 @@
+model_checkpoint_path: "9622weights_10000"
+all_model_checkpoint_paths: "9622weights_10000"

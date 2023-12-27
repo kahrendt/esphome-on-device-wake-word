@@ -9,6 +9,8 @@
 #include "tensorflow/lite/micro/micro_log.h"
 #include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
 
+#define USE_INT8_PREPROCESSOR
+
 namespace esphome {
 namespace voice_assistant {
 
@@ -33,12 +35,12 @@ enum {
 enum {
   STREAMING_MODEL_ARENA_SIZE = 1024 * 1000,
   STREAMING_MODEL_VARIABLE_ARENA_SIZE = 10 * 1000,
-  NONSTREAMING_MODEL_ARENA_SIZE = 1024 * 1000,
   PREPROCESSOR_ARENA_SIZE = 16 * 1024,
 };
 
-static constexpr float STREAMING_MODEL_PROBABILITY_CUTOFF = 0.7;
-static constexpr float NONSTREAMING_MODEL_PROBABILITY_CUTOFF = 0.5;
+// Increasing either of these will reduce the rate of false acceptances while increasing the false rejection rate
+static constexpr float STREAMING_MODEL_PROBABILITY_CUTOFF = 0.6;
+static constexpr size_t STREAMING_MODEL_SLIDING_WINDOW_MEAN_LENGTH = 10;
 
 class OnDeviceWakeWord {
  public:
@@ -56,27 +58,25 @@ class OnDeviceWakeWord {
  protected:
   const tflite::Model *preprocessor_model_{nullptr};
   const tflite::Model *streaming_model_{nullptr};
-  const tflite::Model *nonstreaming_model_{nullptr};
   tflite::MicroInterpreter *streaming_interpreter_{nullptr};
-  tflite::MicroInterpreter *nonstreaming_interpreter_{nullptr};
   tflite::MicroInterpreter *preprocessor_interperter_{nullptr};
 
-  uint8_t last_5_probabilities_[5];
-  float recent_streaming_probabilities_[5];
-  size_t last_5_index_{0};
-  float streaming_probability_{0};
-  uint8_t countdown_to_nonstreaming_{10};
+  float recent_streaming_probabilities_[STREAMING_MODEL_SLIDING_WINDOW_MEAN_LENGTH];
+  size_t last_n_index_{0};
   uint8_t successive_wake_words_{0};
   int16_t ignore_windows_{-PREPROCESSOR_FEATURE_COUNT};
 
   uint8_t *streaming_var_arena_{nullptr};
   uint8_t *streaming_tensor_arena_{nullptr};
-  uint8_t *nonstreaming_tensor_arena_{nullptr};
   uint8_t *preprocessor_tensor_arena_{nullptr};
 
   tflite::MicroResourceVariables *mrv_{nullptr};
 
+  #ifdef USE_INT8_PREPROCESSOR
+  int8_t *spectrogram_{nullptr};
+  #else
   float *spectrogram_{nullptr};
+  #endif
 
   // Stores audio fed into feature generator preprocessor
   int16_t *preprocessor_audio_buffer_;
@@ -100,14 +100,13 @@ class OnDeviceWakeWord {
    * @param feature_output Array that will store the features
    * @return True if successful, false otherwise.
   */
+  #ifdef USE_INT8_PREPROCESSOR
+  bool generate_single_feature_(const int16_t *audio_data, const int audio_data_size,
+                                                     int8_t feature_output[PREPROCESSOR_FEATURE_SIZE]);
+  #else
   bool generate_single_feature_(const int16_t *audio_data, const int audio_data_size,
                                      float feature_output[PREPROCESSOR_FEATURE_SIZE]);
-
-  /** Performs inference over the entire spectrogram with the nonstreaming model
-   *
-   * @return Probability of the wake word between 0.0 and 1.0
-   */
-  float perform_nonstreaming_inference_();
+  #endif
 
   /** Performs inference over the most recent feature slice with the streaming model
    *
@@ -128,12 +127,7 @@ class OnDeviceWakeWord {
   bool register_preprocessor_ops_(tflite::MicroMutableOpResolver<18> &op_resolver);
 
   /// @brief Returns true if successfully registered the streaming model's TensorFlow operations
-  bool register_streaming_ops_(tflite::MicroMutableOpResolver<16> &op_resolver);
-
-  /// @brief Returns true if successfully registered the nonstreaming model's TensorFlow operations
-  bool register_nonstreaming_ops_(tflite::MicroMutableOpResolver<9> &op_resolver);
-
-
+  bool register_streaming_ops_(tflite::MicroMutableOpResolver<12> &op_resolver);
 };
 }  // namespace voice_assistant
 }  // namespace esphome

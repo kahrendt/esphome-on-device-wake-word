@@ -16,6 +16,8 @@
 """Inception - reduced version of keras/applications/inception_v3.py ."""
 from kws_streaming.layers import modes
 from kws_streaming.layers import speech_features
+from kws_streaming.layers import stream
+from kws_streaming.layers import delay
 from kws_streaming.layers.compat import tf
 import kws_streaming.models.model_utils as utils
 
@@ -118,8 +120,9 @@ def model(flags):
       utils.parse(flags.cnn1_strides),
       utils.parse(flags.cnn1_filters),
       utils.parse(flags.cnn1_kernel_sizes)):
-    net = utils.conv2d_bn(
-        net, filters, (kernel_size, 1), padding='valid', scale=flags.bn_scale)
+    time_buffer_size = kernel_size-1
+    net = utils.conv2d_bn_delay(
+        net, filters, (kernel_size, 1), padding='causal', scale=flags.bn_scale, delay_val=time_buffer_size//2)
     if stride > 1:
       net = tf.keras.layers.MaxPooling2D((3, 1), strides=(stride, 1))(net)
 
@@ -127,17 +130,19 @@ def model(flags):
       utils.parse(flags.cnn2_strides), utils.parse(flags.cnn2_filters1),
       utils.parse(flags.cnn2_filters2), utils.parse(flags.cnn2_kernel_sizes)):
 
+    time_buffer_size = kernel_size-1
+
     branch1 = utils.conv2d_bn(net, filters1, (1, 1), scale=flags.bn_scale)
 
     branch2 = utils.conv2d_bn(net, filters1, (1, 1), scale=flags.bn_scale)
-    branch2 = utils.conv2d_bn(
-        branch2, filters1, (kernel_size, 1), scale=flags.bn_scale)
+    branch2 = utils.conv2d_bn_delay(
+        branch2, filters1, (kernel_size, 1), padding='causal', scale=flags.bn_scale, delay_val=time_buffer_size//2)
 
     branch3 = utils.conv2d_bn(net, filters1, (1, 1), scale=flags.bn_scale)
-    branch3 = utils.conv2d_bn(
-        branch3, filters1, (kernel_size, 1), scale=flags.bn_scale)
-    branch3 = utils.conv2d_bn(
-        branch3, filters1, (kernel_size, 1), scale=flags.bn_scale)
+    branch3 = utils.conv2d_bn_delay(
+        branch3, filters1, (kernel_size, 1), padding='causal', scale=flags.bn_scale, delay_val=time_buffer_size//2)
+    branch3 = utils.conv2d_bn_delay(
+        branch3, filters1, (kernel_size, 1), padding='causal', scale=flags.bn_scale, delay_val=time_buffer_size//2)
 
     net = tf.keras.layers.concatenate([branch1, branch2, branch3])
     # [batch, time, 1, filters*4]
@@ -146,8 +151,9 @@ def model(flags):
 
     if stride > 1:
       net = tf.keras.layers.MaxPooling2D((3, 1), strides=(stride, 1))(net)
+    #   net = stream.Stream(cell=tf.keras.layers.MaxPooling2D((3, 1), strides=(stride, 1)))(net)
 
-  net = tf.keras.layers.GlobalAveragePooling2D()(net)
+  net = stream.Stream(cell=tf.keras.layers.GlobalAveragePooling2D())(net)
   # [batch, filters*4]
   net = tf.keras.layers.Dropout(flags.dropout)(net)
   net = tf.keras.layers.Dense(flags.label_count)(net)

@@ -29,7 +29,8 @@ from kws_streaming.models import model_utils
 from kws_streaming.models import models as kws_models
 import keras
 
-models_utils = tf._keras.models  # pylint: disable=protected-access
+# models_utils = tf._keras.models  # pylint: disable=protected-access
+models_utils = tf.keras.models  # pylint: disable=protected-access
 functional = keras  # pylint: disable=protected-access
 
 

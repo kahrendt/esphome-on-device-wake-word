@@ -27,11 +27,12 @@ import pprint
 from absl import logging
 import numpy as np
 import tensorflow.compat.v1 as tf
-import tensorflow_addons as tfa
+# import tensorflow_addons as tfa
 import kws_streaming.data.input_data as input_data
+import kws_streaming.data.input_data_shortcut as input_data_shortcut
 from kws_streaming.models import models
 from kws_streaming.models import utils
-
+from collections import deque
 
 def train(flags):
   """Model training."""
@@ -51,7 +52,8 @@ def train(flags):
   sess = tf.Session(config=config)
   tf.keras.backend.set_session(sess)
 
-  audio_processor = input_data.AudioProcessor(flags)
+  audio_processor = input_data_shortcut.AudioHandler(flags)
+  # audio_processor = input_data.AudioProcessor(flags)
 
   time_shift_samples = int((flags.time_shift_ms * flags.sample_rate) / 1000)
 
@@ -96,13 +98,13 @@ def train(flags):
     optimizer = tf.keras.optimizers.Adam(epsilon=flags.optimizer_epsilon)
   elif flags.optimizer == 'momentum':
     optimizer = tf.keras.optimizers.SGD(momentum=0.9)
-  elif flags.optimizer == 'novograd':
-    optimizer = tfa.optimizers.NovoGrad(
-        lr=0.05,
-        beta_1=flags.novograd_beta_1,
-        beta_2=flags.novograd_beta_2,
-        weight_decay=flags.novograd_weight_decay,
-        grad_averaging=bool(flags.novograd_grad_averaging))
+  # elif flags.optimizer == 'novograd':
+  #   optimizer = tfa.optimizers.NovoGrad(
+  #       lr=0.05,
+  #       beta_1=flags.novograd_beta_1,
+  #       beta_2=flags.novograd_beta_2,
+  #       weight_decay=flags.novograd_weight_decay,
+  #       grad_averaging=bool(flags.novograd_grad_averaging))
   else:
     raise ValueError('Unsupported optimizer:%s' % flags.optimizer)
 
@@ -140,6 +142,9 @@ def train(flags):
   sess.run(tf.global_variables_initializer())
   status.initialize_or_restore(sess)
 
+  training_accuracy_deque = deque([])
+  cross_entropy_deque = deque([])
+
   # Training loop.
   for training_step in range(start_step, training_steps_max + 1):
     offset = (training_step -
@@ -171,9 +176,18 @@ def train(flags):
     ])
     train_writer.add_summary(summary, training_step)
 
-    logging.info(
-        'Step #%d: rate %f, accuracy %.2f%%, cross entropy %f',
-        *(training_step, learning_rate_value, result[1] * 100, result[0]))
+    if len(training_accuracy_deque) >= 5:
+      training_accuracy_deque.popleft()
+      cross_entropy_deque.popleft()
+    
+    training_accuracy_deque.append(result[1])
+    cross_entropy_deque.append(result[0])
+
+    if not training_step % 5:
+      logging.info(
+          'Step #%d: rate %f, accuracy %.2f%%, cross entropy %f',
+          *(training_step, learning_rate_value, sum(training_accuracy_deque)/5.0 * 100, sum(cross_entropy_deque)/5.0))
+          # *(training_step, learning_rate_value, result[1] * 100, result[0]))
 
     is_last_step = (training_step == training_steps_max)
     if (training_step % flags.eval_step_interval) == 0 or is_last_step:
