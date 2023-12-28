@@ -14,6 +14,8 @@ The ``example_esphome_yaml`` folder has a full example for an S3 Box Lite which 
 
 Here is a bare-bones example that implements the ``voice_assistant`` component as well as a switch to toggle the on-device wake word detection. It also requires an appropriate ``esp_adf`` component configuration.
 
+Please **remove ``improv_serial`` and ``esp32_improv`` from your configuration!** It seems to slow down the device too much so that audio samples are dropped. This results in a much higher frequency of false rejections.
+
 ```
 external_components:
   - source: github://pr#5230
@@ -45,7 +47,6 @@ voice_assistant:
           switch.is_on: use_local_wake_word
         then:
           - voice_assistant.start_continuous:
-          - lambda: id(init_in_progress) = false;
 
 switch:
   - platform: template
@@ -123,7 +124,7 @@ We train the streaming model using the follow (note it requires several modifica
 --split_data 0 \
 --mel_upper_edge_hertz 7500.0 \
 --mel_lower_edge_hertz 125.0 \
---how_many_training_steps 1000 \
+--how_many_training_steps 10000 \
 --learning_rate 0.001 \
 --window_size_ms={WINDOW_SIZE_MS} \
 --window_stride_ms={WINDOW_STRIDE} \
