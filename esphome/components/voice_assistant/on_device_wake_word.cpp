@@ -43,11 +43,6 @@ bool OnDeviceWakeWord::intialize_models() {
     return false;
   }
 
-  // this->spectrogram_ = spectrogram_allocator.allocate(SPECTROGRAM_TOTAL_PIXELS);
-  // if (this->spectrogram_ == nullptr) {
-  //   ESP_LOGE(TAG_LOCAL, "Could not allocate the audio features buffer.");
-  //   return false;
-  // }
   this->new_features_data_ = features_allocator.allocate(PREPROCESSOR_FEATURE_SIZE);
   if (this->new_features_data_ == nullptr) {
     ESP_LOGE(TAG_LOCAL, "Could not allocate the audio features buffer.");
@@ -169,6 +164,7 @@ bool OnDeviceWakeWord::detect_wakeword(ringbuf_handle_t &ring_buffer) {
   float streaming_prob = this->perform_streaming_inference_();
 
   // Add the most recent probability to the sliding window
+  // IMPLEMENTATION DETAILS: This sliding window buffer can be better implemented with an std::deque; the user/model should be able to set the length of the window
   this->recent_streaming_probabilities_[this->last_n_index_] = streaming_prob;
   ++this->last_n_index_;
   if (this->last_n_index_ == STREAMING_MODEL_SLIDING_WINDOW_MEAN_LENGTH)
@@ -187,7 +183,7 @@ bool OnDeviceWakeWord::detect_wakeword(ringbuf_handle_t &ring_buffer) {
   }
 
   if (sliding_window_average > STREAMING_MODEL_PROBABILITY_CUTOFF) {
-    this->ignore_windows_ = -PREPROCESSOR_FEATURE_COUNT;
+    this->ignore_windows_ = -SPECTROGRAM_LENGTH;
     for (int n = 0; n < STREAMING_MODEL_SLIDING_WINDOW_MEAN_LENGTH; ++n) {
       this->recent_streaming_probabilities_[n] = 0.0;
     }

@@ -16,8 +16,10 @@ static const char *const TAG_LOCAL = "local_wake_word";
 
 // Constants used for audio preprocessor model
 enum {
+  SPECTROGRAM_LENGTH = 74,  // The number of slices in the spectrogram when trained IMPLEMENTATION_DETAILS: This can depend on the model, but doesn't directly affect any of the inference code
+
+  // The following are dictated by the preprocessor model
   PREPROCESSOR_FEATURE_SIZE = 40,   // The number of features the audio preprocessor generates per slice
-  PREPROCESSOR_FEATURE_COUNT = 74,  // The number of slices in the spectrogram when trained
   FEATURE_STRIDE_MS = 20,           // How frequently the preprocessor generates a new set of features
   FEATURE_DURATION_MS = 30,         // Duration of each slice used as input into the preprocessor
   AUDIO_SAMPLE_FREQUENCY = 16000,   // Audio sample frequency in hertz
@@ -36,6 +38,7 @@ enum {
 };
 
 // Increasing either of these will reduce the rate of false acceptances while increasing the false rejection rate
+// IMPLEMENTATION DETAILS: These should be exposed to the user for modification. It would also be nice if we could set defaults specific to each model
 static constexpr float STREAMING_MODEL_PROBABILITY_CUTOFF = 0.5;
 static constexpr size_t STREAMING_MODEL_SLIDING_WINDOW_MEAN_LENGTH = 10;
 
@@ -61,7 +64,9 @@ class OnDeviceWakeWord {
   float recent_streaming_probabilities_[STREAMING_MODEL_SLIDING_WINDOW_MEAN_LENGTH];
   size_t last_n_index_{0};
 
-  int16_t ignore_windows_{-PREPROCESSOR_FEATURE_COUNT};
+  // When the wake word detection first starts or after the word has been detected once, we ignore the first trained spectrogram's length of probabilities
+  // IMPLEMENTATION DETAILS: A model should be able to set this value, as it may have been trained on a shorter or longer spectrogram
+  int16_t ignore_windows_{-SPECTROGRAM_LENGTH};
 
   uint8_t *streaming_var_arena_{nullptr};
   uint8_t *streaming_tensor_arena_{nullptr};
