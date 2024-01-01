@@ -1,0 +1,14 @@
+Hey Jarvis Benchmarks (for quantized model):
+
+Cut off 0.5, average over last 10 probabilities:
+	- Picovoice's wake word benchmark: False reject rate 0.07; False accepts per hour 0.081
+	- Dipco Dinner Party: False accepts per hour 0.187
+
+Cut off 0.5, average over last 5 probabilities:
+	- Picovoice's wake word benchmark: False reject rate 0.047; False accepts per hour 0.041
+	- Dipco Dinner Party: False accepts per hour 0.750
+
+
+Cut off 0.5, average over last 1 probabilities:
+	- Picovoice's wake word benchmark: False reject rate 0.047; False accepts per hour 0.041
+	- Dipco Dinner Party: False accepts per hour 0.937

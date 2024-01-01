@@ -1,0 +1,13 @@
+Okay Nabu Benchmarks (for quantized model):
+
+Cut off 0.5, average over last 10 probabilities:
+	- Picovoice's wake word benchmark: False reject rate 0.11; False accepts per hour 0.082
+	- Dipco Dinner Party: False accepts per hour 0.187
+
+Cut off 0.5, average over last 5 probabilities:
+	- Picovoice's wake word benchmark: False reject rate 0.107; False accepts per hour 0.122
+	- Dipco Dinner Party: False accepts per hour 0.375
+
+Cut off 0.5, average over last 1 probabilities:
+	- Picovoice's wake word benchmark: False reject rate 0.103; False accepts per hour 0.122
+	- Dipco Dinner Party: False accepts per hour 0.562

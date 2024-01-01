@@ -1,0 +1,377 @@
+Model: "model_1"
+__________________________________________________________________________________________________
+ Layer (type)                Output Shape                 Param #   Connected to                  
+==================================================================================================
+ input_audio (InputLayer)    [(1, 1, 40)]                 0         []                            
+                                                                                                  
+ tf_op_layer_ExpandDims (Te  (1, 1, 1, 40)                0         ['input_audio[0][0]']         
+ nsorFlowOpLayer)                                                                                 
+                                                                                                  
+ stream (Stream)             (1, 1, 1, 32)                6400      ['tf_op_layer_ExpandDims[0][0]
+                                                                    ']                            
+                                                                                                  
+ batch_normalization (Batch  (1, 1, 1, 32)                96        ['stream[0][0]']              
+ Normalization)                                                                                   
+                                                                                                  
+ activation (Activation)     (1, 1, 1, 32)                0         ['batch_normalization[0][0]'] 
+                                                                                                  
+ conv2d_4 (Conv2D)           (1, 1, 1, 16)                512       ['activation[0][0]']          
+                                                                                                  
+ batch_normalization_4 (Bat  (1, 1, 1, 16)                48        ['conv2d_4[0][0]']            
+ chNormalization)                                                                                 
+                                                                                                  
+ activation_4 (Activation)   (1, 1, 1, 16)                0         ['batch_normalization_4[0][0]'
+                                                                    ]                             
+                                                                                                  
+ conv2d_2 (Conv2D)           (1, 1, 1, 16)                512       ['activation[0][0]']          
+                                                                                                  
+ stream_2 (Stream)           (1, 1, 1, 16)                768       ['activation_4[0][0]']        
+                                                                                                  
+ batch_normalization_2 (Bat  (1, 1, 1, 16)                48        ['conv2d_2[0][0]']            
+ chNormalization)                                                                                 
+                                                                                                  
+ batch_normalization_5 (Bat  (1, 1, 1, 16)                48        ['stream_2[0][0]']            
+ chNormalization)                                                                                 
+                                                                                                  
+ activation_2 (Activation)   (1, 1, 1, 16)                0         ['batch_normalization_2[0][0]'
+                                                                    ]                             
+                                                                                                  
+ activation_5 (Activation)   (1, 1, 1, 16)                0         ['batch_normalization_5[0][0]'
+                                                                    ]                             
+                                                                                                  
+ conv2d_1 (Conv2D)           (1, 1, 1, 16)                512       ['activation[0][0]']          
+                                                                                                  
+ stream_1 (Stream)           (1, 1, 1, 16)                768       ['activation_2[0][0]']        
+                                                                                                  
+ stream_3 (Stream)           (1, 1, 1, 16)                768       ['activation_5[0][0]']        
+                                                                                                  
+ batch_normalization_1 (Bat  (1, 1, 1, 16)                48        ['conv2d_1[0][0]']            
+ chNormalization)                                                                                 
+                                                                                                  
+ batch_normalization_3 (Bat  (1, 1, 1, 16)                48        ['stream_1[0][0]']            
+ chNormalization)                                                                                 
+                                                                                                  
+ batch_normalization_6 (Bat  (1, 1, 1, 16)                48        ['stream_3[0][0]']            
+ chNormalization)                                                                                 
+                                                                                                  
+ activation_1 (Activation)   (1, 1, 1, 16)                0         ['batch_normalization_1[0][0]'
+                                                                    ]                             
+                                                                                                  
+ activation_3 (Activation)   (1, 1, 1, 16)                0         ['batch_normalization_3[0][0]'
+                                                                    ]                             
+                                                                                                  
+ activation_6 (Activation)   (1, 1, 1, 16)                0         ['batch_normalization_6[0][0]'
+                                                                    ]                             
+                                                                                                  
+ concatenate (Concatenate)   (1, 1, 1, 48)                0         ['activation_1[0][0]',        
+                                                                     'activation_3[0][0]',        
+                                                                     'activation_6[0][0]']        
+                                                                                                  
+ conv2d_7 (Conv2D)           (1, 1, 1, 32)                1536      ['concatenate[0][0]']         
+                                                                                                  
+ batch_normalization_7 (Bat  (1, 1, 1, 32)                96        ['conv2d_7[0][0]']            
+ chNormalization)                                                                                 
+                                                                                                  
+ activation_7 (Activation)   (1, 1, 1, 32)                0         ['batch_normalization_7[0][0]'
+                                                                    ]                             
+                                                                                                  
+ conv2d_11 (Conv2D)          (1, 1, 1, 16)                512       ['activation_7[0][0]']        
+                                                                                                  
+ batch_normalization_11 (Ba  (1, 1, 1, 16)                48        ['conv2d_11[0][0]']           
+ tchNormalization)                                                                                
+                                                                                                  
+ activation_11 (Activation)  (1, 1, 1, 16)                0         ['batch_normalization_11[0][0]
+                                                                    ']                            
+                                                                                                  
+ conv2d_9 (Conv2D)           (1, 1, 1, 16)                512       ['activation_7[0][0]']        
+                                                                                                  
+ stream_5 (Stream)           (1, 1, 1, 16)                1280      ['activation_11[0][0]']       
+                                                                                                  
+ batch_normalization_9 (Bat  (1, 1, 1, 16)                48        ['conv2d_9[0][0]']            
+ chNormalization)                                                                                 
+                                                                                                  
+ batch_normalization_12 (Ba  (1, 1, 1, 16)                48        ['stream_5[0][0]']            
+ tchNormalization)                                                                                
+                                                                                                  
+ activation_9 (Activation)   (1, 1, 1, 16)                0         ['batch_normalization_9[0][0]'
+                                                                    ]                             
+                                                                                                  
+ activation_12 (Activation)  (1, 1, 1, 16)                0         ['batch_normalization_12[0][0]
+                                                                    ']                            
+                                                                                                  
+ conv2d_8 (Conv2D)           (1, 1, 1, 16)                512       ['activation_7[0][0]']        
+                                                                                                  
+ stream_4 (Stream)           (1, 1, 1, 16)                1280      ['activation_9[0][0]']        
+                                                                                                  
+ stream_6 (Stream)           (1, 1, 1, 16)                1280      ['activation_12[0][0]']       
+                                                                                                  
+ batch_normalization_8 (Bat  (1, 1, 1, 16)                48        ['conv2d_8[0][0]']            
+ chNormalization)                                                                                 
+                                                                                                  
+ batch_normalization_10 (Ba  (1, 1, 1, 16)                48        ['stream_4[0][0]']            
+ tchNormalization)                                                                                
+                                                                                                  
+ batch_normalization_13 (Ba  (1, 1, 1, 16)                48        ['stream_6[0][0]']            
+ tchNormalization)                                                                                
+                                                                                                  
+ activation_8 (Activation)   (1, 1, 1, 16)                0         ['batch_normalization_8[0][0]'
+                                                                    ]                             
+                                                                                                  
+ activation_10 (Activation)  (1, 1, 1, 16)                0         ['batch_normalization_10[0][0]
+                                                                    ']                            
+                                                                                                  
+ activation_13 (Activation)  (1, 1, 1, 16)                0         ['batch_normalization_13[0][0]
+                                                                    ']                            
+                                                                                                  
+ concatenate_1 (Concatenate  (1, 1, 1, 48)                0         ['activation_8[0][0]',        
+ )                                                                   'activation_10[0][0]',       
+                                                                     'activation_13[0][0]']       
+                                                                                                  
+ conv2d_14 (Conv2D)          (1, 1, 1, 64)                3072      ['concatenate_1[0][0]']       
+                                                                                                  
+ batch_normalization_14 (Ba  (1, 1, 1, 64)                192       ['conv2d_14[0][0]']           
+ tchNormalization)                                                                                
+                                                                                                  
+ activation_14 (Activation)  (1, 1, 1, 64)                0         ['batch_normalization_14[0][0]
+                                                                    ']                            
+                                                                                                  
+ conv2d_18 (Conv2D)          (1, 1, 1, 16)                1024      ['activation_14[0][0]']       
+                                                                                                  
+ batch_normalization_18 (Ba  (1, 1, 1, 16)                48        ['conv2d_18[0][0]']           
+ tchNormalization)                                                                                
+                                                                                                  
+ activation_18 (Activation)  (1, 1, 1, 16)                0         ['batch_normalization_18[0][0]
+                                                                    ']                            
+                                                                                                  
+ conv2d_16 (Conv2D)          (1, 1, 1, 16)                1024      ['activation_14[0][0]']       
+                                                                                                  
+ stream_8 (Stream)           (1, 1, 1, 16)                1280      ['activation_18[0][0]']       
+                                                                                                  
+ batch_normalization_16 (Ba  (1, 1, 1, 16)                48        ['conv2d_16[0][0]']           
+ tchNormalization)                                                                                
+                                                                                                  
+ batch_normalization_19 (Ba  (1, 1, 1, 16)                48        ['stream_8[0][0]']            
+ tchNormalization)                                                                                
+                                                                                                  
+ activation_16 (Activation)  (1, 1, 1, 16)                0         ['batch_normalization_16[0][0]
+                                                                    ']                            
+                                                                                                  
+ activation_19 (Activation)  (1, 1, 1, 16)                0         ['batch_normalization_19[0][0]
+                                                                    ']                            
+                                                                                                  
+ conv2d_15 (Conv2D)          (1, 1, 1, 16)                1024      ['activation_14[0][0]']       
+                                                                                                  
+ stream_7 (Stream)           (1, 1, 1, 16)                1280      ['activation_16[0][0]']       
+                                                                                                  
+ stream_9 (Stream)           (1, 1, 1, 16)                1280      ['activation_19[0][0]']       
+                                                                                                  
+ batch_normalization_15 (Ba  (1, 1, 1, 16)                48        ['conv2d_15[0][0]']           
+ tchNormalization)                                                                                
+                                                                                                  
+ batch_normalization_17 (Ba  (1, 1, 1, 16)                48        ['stream_7[0][0]']            
+ tchNormalization)                                                                                
+                                                                                                  
+ batch_normalization_20 (Ba  (1, 1, 1, 16)                48        ['stream_9[0][0]']            
+ tchNormalization)                                                                                
+                                                                                                  
+ activation_15 (Activation)  (1, 1, 1, 16)                0         ['batch_normalization_15[0][0]
+                                                                    ']                            
+                                                                                                  
+ activation_17 (Activation)  (1, 1, 1, 16)                0         ['batch_normalization_17[0][0]
+                                                                    ']                            
+                                                                                                  
+ activation_20 (Activation)  (1, 1, 1, 16)                0         ['batch_normalization_20[0][0]
+                                                                    ']                            
+                                                                                                  
+ concatenate_2 (Concatenate  (1, 1, 1, 48)                0         ['activation_15[0][0]',       
+ )                                                                   'activation_17[0][0]',       
+                                                                     'activation_20[0][0]']       
+                                                                                                  
+ conv2d_21 (Conv2D)          (1, 1, 1, 70)                3360      ['concatenate_2[0][0]']       
+                                                                                                  
+ batch_normalization_21 (Ba  (1, 1, 1, 70)                210       ['conv2d_21[0][0]']           
+ tchNormalization)                                                                                
+                                                                                                  
+ activation_21 (Activation)  (1, 1, 1, 70)                0         ['batch_normalization_21[0][0]
+                                                                    ']                            
+                                                                                                  
+ stream_10 (Stream)          (1, 70)                      0         ['activation_21[0][0]']       
+                                                                                                  
+ stream/ExternalState (Inpu  [(1, 4, 1, 40)]              0         []                            
+ tLayer)                                                                                          
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 1, 1, 40)]              0         ['tf_op_layer_ExpandDims[0][0]
+ am/Pad (TensorFlowOpLayer)                                         ']                            
+                                                                                                  
+ stream_2/ExternalState (In  [(1, 2, 1, 16)]              0         []                            
+ putLayer)                                                                                        
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 1, 1, 16)]              0         ['activation_4[0][0]']        
+ am_2/Pad (TensorFlowOpLaye                                                                       
+ r)                                                                                               
+                                                                                                  
+ stream_1/ExternalState (In  [(1, 2, 1, 16)]              0         []                            
+ putLayer)                                                                                        
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 1, 1, 16)]              0         ['activation_2[0][0]']        
+ am_1/Pad (TensorFlowOpLaye                                                                       
+ r)                                                                                               
+                                                                                                  
+ stream_3/ExternalState (In  [(1, 2, 1, 16)]              0         []                            
+ putLayer)                                                                                        
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 1, 1, 16)]              0         ['activation_5[0][0]']        
+ am_3/Pad (TensorFlowOpLaye                                                                       
+ r)                                                                                               
+                                                                                                  
+ stream_5/ExternalState (In  [(1, 4, 1, 16)]              0         []                            
+ putLayer)                                                                                        
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 1, 1, 16)]              0         ['activation_11[0][0]']       
+ am_5/Pad (TensorFlowOpLaye                                                                       
+ r)                                                                                               
+                                                                                                  
+ stream_4/ExternalState (In  [(1, 4, 1, 16)]              0         []                            
+ putLayer)                                                                                        
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 1, 1, 16)]              0         ['activation_9[0][0]']        
+ am_4/Pad (TensorFlowOpLaye                                                                       
+ r)                                                                                               
+                                                                                                  
+ stream_6/ExternalState (In  [(1, 4, 1, 16)]              0         []                            
+ putLayer)                                                                                        
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 1, 1, 16)]              0         ['activation_12[0][0]']       
+ am_6/Pad (TensorFlowOpLaye                                                                       
+ r)                                                                                               
+                                                                                                  
+ stream_8/ExternalState (In  [(1, 4, 1, 16)]              0         []                            
+ putLayer)                                                                                        
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 1, 1, 16)]              0         ['activation_18[0][0]']       
+ am_8/Pad (TensorFlowOpLaye                                                                       
+ r)                                                                                               
+                                                                                                  
+ stream_7/ExternalState (In  [(1, 4, 1, 16)]              0         []                            
+ putLayer)                                                                                        
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 1, 1, 16)]              0         ['activation_16[0][0]']       
+ am_7/Pad (TensorFlowOpLaye                                                                       
+ r)                                                                                               
+                                                                                                  
+ stream_9/ExternalState (In  [(1, 4, 1, 16)]              0         []                            
+ putLayer)                                                                                        
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 1, 1, 16)]              0         ['activation_19[0][0]']       
+ am_9/Pad (TensorFlowOpLaye                                                                       
+ r)                                                                                               
+                                                                                                  
+ stream_10/ExternalState (I  [(1, 70, 1, 70)]             0         []                            
+ nputLayer)                                                                                       
+                                                                                                  
+ dropout (Dropout)           (1, 70)                      0         ['stream_10[0][0]']           
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 5, 1, 40)]              0         ['stream/ExternalState[0][0]',
+ am/concat (TensorFlowOpLay                                          'tf_op_layer_streaming/stream
+ er)                                                                /Pad[0][0]']                  
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 3, 1, 16)]              0         ['stream_2/ExternalState[0][0]
+ am_2/concat (TensorFlowOpL                                         ',                            
+ ayer)                                                               'tf_op_layer_streaming/stream
+                                                                    _2/Pad[0][0]']                
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 3, 1, 16)]              0         ['stream_1/ExternalState[0][0]
+ am_1/concat (TensorFlowOpL                                         ',                            
+ ayer)                                                               'tf_op_layer_streaming/stream
+                                                                    _1/Pad[0][0]']                
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 3, 1, 16)]              0         ['stream_3/ExternalState[0][0]
+ am_3/concat (TensorFlowOpL                                         ',                            
+ ayer)                                                               'tf_op_layer_streaming/stream
+                                                                    _3/Pad[0][0]']                
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 5, 1, 16)]              0         ['stream_5/ExternalState[0][0]
+ am_5/concat (TensorFlowOpL                                         ',                            
+ ayer)                                                               'tf_op_layer_streaming/stream
+                                                                    _5/Pad[0][0]']                
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 5, 1, 16)]              0         ['stream_4/ExternalState[0][0]
+ am_4/concat (TensorFlowOpL                                         ',                            
+ ayer)                                                               'tf_op_layer_streaming/stream
+                                                                    _4/Pad[0][0]']                
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 5, 1, 16)]              0         ['stream_6/ExternalState[0][0]
+ am_6/concat (TensorFlowOpL                                         ',                            
+ ayer)                                                               'tf_op_layer_streaming/stream
+                                                                    _6/Pad[0][0]']                
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 5, 1, 16)]              0         ['stream_8/ExternalState[0][0]
+ am_8/concat (TensorFlowOpL                                         ',                            
+ ayer)                                                               'tf_op_layer_streaming/stream
+                                                                    _8/Pad[0][0]']                
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 5, 1, 16)]              0         ['stream_7/ExternalState[0][0]
+ am_7/concat (TensorFlowOpL                                         ',                            
+ ayer)                                                               'tf_op_layer_streaming/stream
+                                                                    _7/Pad[0][0]']                
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 5, 1, 16)]              0         ['stream_9/ExternalState[0][0]
+ am_9/concat (TensorFlowOpL                                         ',                            
+ ayer)                                                               'tf_op_layer_streaming/stream
+                                                                    _9/Pad[0][0]']                
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 69, 1, 70)]             0         ['stream_10/ExternalState[0][0
+ am_10/strided_slice (Tenso                                         ]']                           
+ rFlowOpLayer)                                                                                    
+                                                                                                  
+ dense (Dense)               (1, 1)                       71        ['dropout[0][0]']             
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 4, 1, 40)]              0         ['tf_op_layer_streaming/stream
+ am/strided_slice (TensorFl                                         /concat[0][0]']               
+ owOpLayer)                                                                                       
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 2, 1, 16)]              0         ['tf_op_layer_streaming/stream
+ am_2/strided_slice (Tensor                                         _2/concat[0][0]']             
+ FlowOpLayer)                                                                                     
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 2, 1, 16)]              0         ['tf_op_layer_streaming/stream
+ am_1/strided_slice (Tensor                                         _1/concat[0][0]']             
+ FlowOpLayer)                                                                                     
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 2, 1, 16)]              0         ['tf_op_layer_streaming/stream
+ am_3/strided_slice (Tensor                                         _3/concat[0][0]']             
+ FlowOpLayer)                                                                                     
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 4, 1, 16)]              0         ['tf_op_layer_streaming/stream
+ am_5/strided_slice (Tensor                                         _5/concat[0][0]']             
+ FlowOpLayer)                                                                                     
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 4, 1, 16)]              0         ['tf_op_layer_streaming/stream
+ am_4/strided_slice (Tensor                                         _4/concat[0][0]']             
+ FlowOpLayer)                                                                                     
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 4, 1, 16)]              0         ['tf_op_layer_streaming/stream
+ am_6/strided_slice (Tensor                                         _6/concat[0][0]']             
+ FlowOpLayer)                                                                                     
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 4, 1, 16)]              0         ['tf_op_layer_streaming/stream
+ am_8/strided_slice (Tensor                                         _8/concat[0][0]']             
+ FlowOpLayer)                                                                                     
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 4, 1, 16)]              0         ['tf_op_layer_streaming/stream
+ am_7/strided_slice (Tensor                                         _7/concat[0][0]']             
+ FlowOpLayer)                                                                                     
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 4, 1, 16)]              0         ['tf_op_layer_streaming/stream
+ am_9/strided_slice (Tensor                                         _9/concat[0][0]']             
+ FlowOpLayer)                                                                                     
+                                                                                                  
+ tf_op_layer_streaming/stre  [(1, 70, 1, 70)]             0         ['tf_op_layer_streaming/stream
+ am_10/concat (TensorFlowOp                                         _10/strided_slice[0][0]',     
+ Layer)                                                              'activation_21[0][0]']       
+                                                                                                  
+==================================================================================================
+Total params: 32025 (125.10 KB)
+Trainable params: 31053 (121.30 KB)
+Non-trainable params: 972 (3.80 KB)
+__________________________________________________________________________________________________
