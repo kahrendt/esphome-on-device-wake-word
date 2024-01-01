@@ -13,41 +13,16 @@
 #include "tensorflow/lite/micro/micro_log.h"
 #include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
 #include "model.h"
-#ifdef USE_INT8_PREPROCESSOR
 #include "audio_preprocessor_int8_model_data.h"
-#else
-#include "audio_preprocessor_float32_model_data.h"
-#endif
 
 #include <cmath>
 
 namespace esphome {
 namespace voice_assistant {
 
-#ifndef USE_INT8_PREPROCESSOR
-static int8_t convert_float_to_int8(float input, float scale, int zero_point) {
-  float scaled = input/scale;
-  float zeroed = scaled + zero_point;
-
-  if (zeroed < zero_point) {
-    return static_cast<int8_t> (zero_point);
-  }
-  else if (zeroed > 127) {
-    return static_cast<int8_t> (127);
-  }
-  else {
-    return static_cast<int8_t>(round(zeroed));
-  }
-}
-#endif
-
 bool OnDeviceWakeWord::intialize_models() {
   ExternalRAMAllocator<uint8_t> arena_allocator(ExternalRAMAllocator<uint8_t>::ALLOW_FAILURE);
-  #ifdef USE_INT8_PREPROCESSOR
-  ExternalRAMAllocator<int8_t> spectrogram_allocator(ExternalRAMAllocator<int8_t>::ALLOW_FAILURE);
-  #else
-  ExternalRAMAllocator<float> spectrogram_allocator(ExternalRAMAllocator<float>::ALLOW_FAILURE);
-  #endif
+  ExternalRAMAllocator<int8_t> features_allocator(ExternalRAMAllocator<int8_t>::ALLOW_FAILURE);
   ExternalRAMAllocator<int16_t> audio_samples_allocator(ExternalRAMAllocator<int16_t>::ALLOW_FAILURE);
 
   this->streaming_tensor_arena_ = arena_allocator.allocate(STREAMING_MODEL_ARENA_SIZE);
@@ -68,8 +43,13 @@ bool OnDeviceWakeWord::intialize_models() {
     return false;
   }
 
-  this->spectrogram_ = spectrogram_allocator.allocate(SPECTROGRAM_TOTAL_PIXELS);
-  if (this->spectrogram_ == nullptr) {
+  // this->spectrogram_ = spectrogram_allocator.allocate(SPECTROGRAM_TOTAL_PIXELS);
+  // if (this->spectrogram_ == nullptr) {
+  //   ESP_LOGE(TAG_LOCAL, "Could not allocate the audio features buffer.");
+  //   return false;
+  // }
+  this->new_features_data_ = features_allocator.allocate(PREPROCESSOR_FEATURE_SIZE);
+  if (this->new_features_data_ == nullptr) {
     ESP_LOGE(TAG_LOCAL, "Could not allocate the audio features buffer.");
     return false;
   }
@@ -86,11 +66,7 @@ bool OnDeviceWakeWord::intialize_models() {
     return false;
   }
 
-  #ifdef USE_INT8_PREPROCESSOR
   this->preprocessor_model_ = tflite::GetModel(g_audio_preprocessor_int8_tflite);
-  #else
-  this->preprocessor_model_ = tflite::GetModel(g_audio_preprocessor_float32_tflite);
-  #endif
   if (this->preprocessor_model_->version() != TFLITE_SCHEMA_VERSION) {
     ESP_LOGE(TAG_LOCAL, "Wake word's audio preprocessor model's schema is not supported");
     return false;
@@ -134,15 +110,6 @@ bool OnDeviceWakeWord::intialize_models() {
     return false;
   }
 
-  // Clear the spectrogram
-  for (int n = 0; n < SPECTROGRAM_TOTAL_PIXELS; ++n) {
-    #ifdef USE_INT8_PREPROCESSOR
-    this->spectrogram_[n] = 0;
-    #else
-    this->spectrogram_[n] = 0.0;
-    #endif
-  }
-
   for (int n = 0; n < STREAMING_MODEL_SLIDING_WINDOW_MEAN_LENGTH; ++n) {
     this->recent_streaming_probabilities_[n] = 0.0;
   }
@@ -150,36 +117,10 @@ bool OnDeviceWakeWord::intialize_models() {
   return true;
 }
 
-bool OnDeviceWakeWord::update_spectrogram_(ringbuf_handle_t &ring_buffer) {
-  // Note that the streaming model does not need the full spectrogram, only the latest feature
-  // This code is maintained for future potential uses; e.g., speaker identification
-
+bool OnDeviceWakeWord::update_features_(ringbuf_handle_t &ring_buffer) {
+  // Verify we have enough samples for a feature slice
   if (!this->slice_available_(ring_buffer)) {
     return false;
-  }
-
-  // Shift over the all spectrogram feature slices by one
-  for (int dest_slice = 0; dest_slice < PREPROCESSOR_FEATURE_COUNT - 1; ++dest_slice) {
-    #ifdef USE_INT8_PREPROCESSOR
-    int8_t *dest_slice_data = this->spectrogram_ + (dest_slice * PREPROCESSOR_FEATURE_SIZE);
-    #else
-    float *dest_slice_data = this->spectrogram_ + (dest_slice * PREPROCESSOR_FEATURE_SIZE);
-    #endif
-
-    const int src_slice = dest_slice + 1; // Next slice
-    #ifdef USE_INT8_PREPROCESSOR
-    const int8_t *src_slice_data = this->spectrogram_ + (src_slice * PREPROCESSOR_FEATURE_SIZE);
-    #else
-    const float *src_slice_data = this->spectrogram_ + (src_slice * PREPROCESSOR_FEATURE_SIZE);
-    #endif
-
-    #ifdef USE_INT8_PREPROCESSOR
-    memcpy((void *) (dest_slice_data),
-        (const void *) (src_slice_data), PREPROCESSOR_FEATURE_SIZE*sizeof(int8_t));
-    #else
-    memcpy((void *) (dest_slice_data),
-        (const void *) (src_slice_data), PREPROCESSOR_FEATURE_SIZE*sizeof(float));
-    #endif
   }
 
   // Retrieve strided audio samples
@@ -188,15 +129,8 @@ bool OnDeviceWakeWord::update_spectrogram_(ringbuf_handle_t &ring_buffer) {
     return false;
   }
 
-  // Pointer to the last feature slice in the spectrogram
-  #ifdef USE_INT8_PREPROCESSOR
-  int8_t *new_slice_data = this->spectrogram_ + ((PREPROCESSOR_FEATURE_COUNT-1) * PREPROCESSOR_FEATURE_SIZE);
-  #else
-  float *new_slice_data = this->spectrogram_ + ((PREPROCESSOR_FEATURE_COUNT-1) * PREPROCESSOR_FEATURE_SIZE);
-  #endif
-
-  // Compute the features for the newest audio samples and store them at the end of the spectrogram
-  if (!this->generate_single_feature_(audio_samples, SAMPLE_DURATION_COUNT, new_slice_data)) {
+  // Compute the features for the newest audio samples
+  if (!this->generate_single_feature_(audio_samples, SAMPLE_DURATION_COUNT, this->new_features_data_)) {
     return false;
   }
 
@@ -206,32 +140,13 @@ bool OnDeviceWakeWord::update_spectrogram_(ringbuf_handle_t &ring_buffer) {
 float OnDeviceWakeWord::perform_streaming_inference_() {
   TfLiteTensor *input = this->streaming_interpreter_->input(0);
 
-  float input_scale = input->params.scale;
-  int input_zero_point = input->params.zero_point;
-
-  #ifdef USE_INT8_PREPROCESSOR
-  int8_t *new_slice_data = this->spectrogram_ + ((PREPROCESSOR_FEATURE_COUNT-1) * PREPROCESSOR_FEATURE_SIZE);
-  #else
-  float *new_slice_data = this->spectrogram_ + ((PREPROCESSOR_FEATURE_COUNT-1) * PREPROCESSOR_FEATURE_SIZE);
-  #endif
-
-
-  #ifdef USE_INT8_PREPROCESSOR
   size_t bytes_to_copy = input->bytes;
 
   memcpy((void *) (tflite::GetTensorData<int8_t>(input)),
-        (const void *) (new_slice_data), bytes_to_copy);
-  #else
-  // Copy the newest slice's features as input into the streaming model after quantizing them
-  for (int i = 0; i < PREPROCESSOR_FEATURE_SIZE; ++i) {
-    int8_t converted_value = convert_float_to_int8(new_slice_data[i], input_scale, input_zero_point);
-    input->data.int8[i] = converted_value;
-  }
-  #endif
+        (const void *) (this->new_features_data_), bytes_to_copy);
 
   uint32_t prior_invoke = millis();
 
-  // Run the streaming model on only the newest slice's features
   TfLiteStatus invoke_status = this->streaming_interpreter_->Invoke();
   if (invoke_status != kTfLiteOk) {
     ESP_LOGW(TAG_LOCAL, "Streaming Interpreter Invoke failed");
@@ -246,7 +161,7 @@ float OnDeviceWakeWord::perform_streaming_inference_() {
 }
 
 bool OnDeviceWakeWord::detect_wakeword(ringbuf_handle_t &ring_buffer) {
-  if (!this->update_spectrogram_(ring_buffer)) {
+  if (!this->update_features_(ring_buffer)) {
     return false;
   }
 
@@ -265,10 +180,6 @@ bool OnDeviceWakeWord::detect_wakeword(ringbuf_handle_t &ring_buffer) {
   }
 
   float sliding_window_average = sum/static_cast<float>(STREAMING_MODEL_SLIDING_WINDOW_MEAN_LENGTH);
-
-  // if (sliding_window_average > 0.4) {
-  //       ESP_LOGD(TAG_LOCAL, "streaming rolling wake word average=%.3f", sliding_window_average);
-  // }
 
   this->ignore_windows_ = std::min(this->ignore_windows_+1, 0);
   if (this->ignore_windows_ < 0) {
@@ -329,13 +240,8 @@ bool OnDeviceWakeWord::stride_audio_samples_(int16_t **audio_samples, ringbuf_ha
   return true;
 }
 
-#ifdef USE_INT8_PREPROCESSOR
 bool OnDeviceWakeWord::generate_single_feature_(const int16_t *audio_data, const int audio_data_size,
                                                      int8_t feature_output[PREPROCESSOR_FEATURE_SIZE]) {
-#else
-bool OnDeviceWakeWord::generate_single_feature_(const int16_t *audio_data, const int audio_data_size,
-                                                     float feature_output[PREPROCESSOR_FEATURE_SIZE]) {
-#endif
   TfLiteTensor *input = this->preprocessor_interperter_->input(0);
   TfLiteTensor *output = this->preprocessor_interperter_->output(0);
   std::copy_n(audio_data, audio_data_size, tflite::GetTensorData<int16_t>(input));
@@ -344,12 +250,7 @@ bool OnDeviceWakeWord::generate_single_feature_(const int16_t *audio_data, const
     ESP_LOGE(TAG_LOCAL, "Failed to preprocess audio for local wake word.");
     return false;
   }
-
-  #ifdef USE_INT8_PREPROCESSOR
   std::memcpy(feature_output, tflite::GetTensorData<int8_t>(output), PREPROCESSOR_FEATURE_SIZE * sizeof(int8_t));
-  #else
-  std::memcpy(feature_output, tflite::GetTensorData<float>(output), PREPROCESSOR_FEATURE_SIZE * sizeof(float));
-  #endif
 
   return true;
 }
@@ -402,8 +303,6 @@ bool OnDeviceWakeWord::register_streaming_ops_(tflite::MicroMutableOpResolver<12
     return false;
   if (op_resolver.AddReshape() != kTfLiteOk)
     return false;
-  // if (op_resolver.AddPad() != kTfLiteOk)
-  //   return false;
   if (op_resolver.AddReadVariable() != kTfLiteOk)
     return false;
   if (op_resolver.AddStridedSlice() != kTfLiteOk)
@@ -414,19 +313,11 @@ bool OnDeviceWakeWord::register_streaming_ops_(tflite::MicroMutableOpResolver<12
     return false;
   if (op_resolver.AddConv2D() != kTfLiteOk)
     return false;
-  // if (op_resolver.AddMul() != kTfLiteOk)
-  //   return false;
-  // if (op_resolver.AddAdd() != kTfLiteOk)
-  //   return false;
   if (op_resolver.AddMean() != kTfLiteOk)
     return false;
-  // if (op_resolver.AddDepthwiseConv2D() != kTfLiteOk)
-  //   return false;
-  // if (op_resolver.AddAveragePool2D() != kTfLiteOk)
-  //   return false;
   if (op_resolver.AddFullyConnected() != kTfLiteOk)
     return false;
-  if (op_resolver.AddSoftmax() != kTfLiteOk)
+  if (op_resolver.AddLogistic() != kTfLiteOk)
     return false;
   if (op_resolver.AddQuantize() != kTfLiteOk)
     return false;

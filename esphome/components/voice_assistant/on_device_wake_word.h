@@ -9,8 +9,6 @@
 #include "tensorflow/lite/micro/micro_log.h"
 #include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
 
-#define USE_INT8_PREPROCESSOR
-
 namespace esphome {
 namespace voice_assistant {
 
@@ -19,11 +17,10 @@ static const char *const TAG_LOCAL = "local_wake_word";
 // Constants used for audio preprocessor model
 enum {
   PREPROCESSOR_FEATURE_SIZE = 40,   // The number of features the audio preprocessor generates per slice
-  PREPROCESSOR_FEATURE_COUNT = 74,  // The number of slices in the spectrogram
+  PREPROCESSOR_FEATURE_COUNT = 74,  // The number of slices in the spectrogram when trained
   FEATURE_STRIDE_MS = 20,           // How frequently the preprocessor generates a new set of features
   FEATURE_DURATION_MS = 30,         // Duration of each slice used as input into the preprocessor
   AUDIO_SAMPLE_FREQUENCY = 16000,   // Audio sample frequency in hertz
-  SPECTROGRAM_TOTAL_PIXELS = (PREPROCESSOR_FEATURE_SIZE * PREPROCESSOR_FEATURE_COUNT),
   HISTORY_SAMPLES_TO_KEEP = ((FEATURE_DURATION_MS - FEATURE_STRIDE_MS) * (AUDIO_SAMPLE_FREQUENCY / 1000)),
   NEW_SAMPLES_TO_GET = (FEATURE_STRIDE_MS * (AUDIO_SAMPLE_FREQUENCY / 1000)),
   SAMPLE_DURATION_COUNT = FEATURE_DURATION_MS * AUDIO_SAMPLE_FREQUENCY / 1000,
@@ -39,7 +36,7 @@ enum {
 };
 
 // Increasing either of these will reduce the rate of false acceptances while increasing the false rejection rate
-static constexpr float STREAMING_MODEL_PROBABILITY_CUTOFF = 0.6;
+static constexpr float STREAMING_MODEL_PROBABILITY_CUTOFF = 0.5;
 static constexpr size_t STREAMING_MODEL_SLIDING_WINDOW_MEAN_LENGTH = 10;
 
 class OnDeviceWakeWord {
@@ -63,20 +60,15 @@ class OnDeviceWakeWord {
 
   float recent_streaming_probabilities_[STREAMING_MODEL_SLIDING_WINDOW_MEAN_LENGTH];
   size_t last_n_index_{0};
-  uint8_t successive_wake_words_{0};
+
   int16_t ignore_windows_{-PREPROCESSOR_FEATURE_COUNT};
 
   uint8_t *streaming_var_arena_{nullptr};
   uint8_t *streaming_tensor_arena_{nullptr};
   uint8_t *preprocessor_tensor_arena_{nullptr};
+  int8_t *new_features_data_{nullptr};
 
   tflite::MicroResourceVariables *mrv_{nullptr};
-
-  #ifdef USE_INT8_PREPROCESSOR
-  int8_t *spectrogram_{nullptr};
-  #else
-  float *spectrogram_{nullptr};
-  #endif
 
   // Stores audio fed into feature generator preprocessor
   int16_t *preprocessor_audio_buffer_;
@@ -90,7 +82,7 @@ class OnDeviceWakeWord {
    * @param ring_buffer ring buffer containing raw audio samples
    * @return True if a new slice of features was generated, false otherwise
    */
-  bool update_spectrogram_(ringbuf_handle_t &ring_buffer);
+  bool update_features_(ringbuf_handle_t &ring_buffer);
 
   /** Generates features from audio samples
    *
@@ -100,13 +92,8 @@ class OnDeviceWakeWord {
    * @param feature_output Array that will store the features
    * @return True if successful, false otherwise.
   */
-  #ifdef USE_INT8_PREPROCESSOR
   bool generate_single_feature_(const int16_t *audio_data, const int audio_data_size,
                                                      int8_t feature_output[PREPROCESSOR_FEATURE_SIZE]);
-  #else
-  bool generate_single_feature_(const int16_t *audio_data, const int audio_data_size,
-                                     float feature_output[PREPROCESSOR_FEATURE_SIZE]);
-  #endif
 
   /** Performs inference over the most recent feature slice with the streaming model
    *

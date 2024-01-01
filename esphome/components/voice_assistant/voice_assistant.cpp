@@ -18,7 +18,7 @@ static const char *const TAG = "voice_assistant";
 #endif
 
 static const size_t SAMPLE_RATE_HZ = 16000;
-static const size_t INPUT_BUFFER_SIZE = 300 * SAMPLE_RATE_HZ / 1000;  // 32ms * 16kHz / 1000ms
+static const size_t INPUT_BUFFER_SIZE = 32 * SAMPLE_RATE_HZ / 1000;  // 32ms * 16kHz / 1000ms
 static const size_t BUFFER_SIZE = 1000 * SAMPLE_RATE_HZ / 1000;      // 1s
 static const size_t SEND_BUFFER_SIZE = INPUT_BUFFER_SIZE * sizeof(int16_t);
 static const size_t RECEIVE_SIZE = 1024;
