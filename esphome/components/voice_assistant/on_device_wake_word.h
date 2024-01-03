@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ringbuf.h>
+#include <freertos/stream_buffer.h>
 
 #include "tensorflow/lite/micro/system_setup.h"
 #include "tensorflow/lite/schema/schema_generated.h"
@@ -53,7 +53,7 @@ class OnDeviceWakeWord {
    * @param ring_Buffer Ring buffer containing raw audio samples
    * @return True if the wake word is detected, false otherwise
    */
-  bool detect_wakeword(ringbuf_handle_t &ring_buffer);
+  bool detect_wakeword(StreamBufferHandle_t &ring_buffer);
 
  protected:
   const tflite::Model *preprocessor_model_{nullptr};
@@ -80,14 +80,14 @@ class OnDeviceWakeWord {
   int16_t *preprocessor_stride_buffer_;
 
   /// @brief Returns true if there are enough audio samples in the buffer to generate another slice of features
-  bool slice_available_(ringbuf_handle_t &ring_buffer);
+  bool slice_available_(StreamBufferHandle_t &ring_buffer);
 
   /** Shifts previous feature slices over by one and generates a new slice of features
    *
    * @param ring_buffer ring buffer containing raw audio samples
    * @return True if a new slice of features was generated, false otherwise
    */
-  bool update_features_(ringbuf_handle_t &ring_buffer);
+  bool update_features_(StreamBufferHandle_t &ring_buffer);
 
   /** Generates features from audio samples
    *
@@ -113,7 +113,7 @@ class OnDeviceWakeWord {
    * @param audio_samples Pointer to an array that will store the strided audio samples
    * @return True if successful, false otherwise
    */
-  bool stride_audio_samples_(int16_t **audio_samples, ringbuf_handle_t &ring_buffer);
+  bool stride_audio_samples_(int16_t **audio_samples, StreamBufferHandle_t &ring_buffer);
 
   /// @brief Returns true if successfully registered the preprocessor's TensorFlow operations
   bool register_preprocessor_ops_(tflite::MicroMutableOpResolver<18> &op_resolver);

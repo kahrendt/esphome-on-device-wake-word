@@ -4,7 +4,7 @@
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
 
-#include <ringbuf.h>
+#include <freertos/stream_buffer.h>
 
 #include "tensorflow/lite/micro/system_setup.h"
 #include "tensorflow/lite/schema/schema_generated.h"
@@ -112,7 +112,7 @@ bool OnDeviceWakeWord::intialize_models() {
   return true;
 }
 
-bool OnDeviceWakeWord::update_features_(ringbuf_handle_t &ring_buffer) {
+bool OnDeviceWakeWord::update_features_(StreamBufferHandle_t &ring_buffer) {
   // Verify we have enough samples for a feature slice
   if (!this->slice_available_(ring_buffer)) {
     return false;
@@ -155,7 +155,7 @@ float OnDeviceWakeWord::perform_streaming_inference_() {
   return static_cast<float>(output->data.uint8[0])/255.0;
 }
 
-bool OnDeviceWakeWord::detect_wakeword(ringbuf_handle_t &ring_buffer) {
+bool OnDeviceWakeWord::detect_wakeword(StreamBufferHandle_t &ring_buffer) {
   if (!this->update_features_(ring_buffer)) {
     return false;
   }
@@ -193,29 +193,29 @@ bool OnDeviceWakeWord::detect_wakeword(ringbuf_handle_t &ring_buffer) {
   return false;
 }
 
-bool OnDeviceWakeWord::slice_available_(ringbuf_handle_t &ring_buffer) {
+bool OnDeviceWakeWord::slice_available_(StreamBufferHandle_t &ring_buffer) {
   uint8_t slices_to_process = rb_bytes_filled(ring_buffer) / (NEW_SAMPLES_TO_GET * sizeof(int16_t));
 
-  if (rb_bytes_filled(ring_buffer) > NEW_SAMPLES_TO_GET*sizeof(int16_t)) {
+  if (xStreamBufferBytesAvailable(ring_buffer) > NEW_SAMPLES_TO_GET*sizeof(int16_t)) {
     return true;
   }
   return false;
 }
 
-bool OnDeviceWakeWord::stride_audio_samples_(int16_t **audio_samples, ringbuf_handle_t &ring_buffer) {
+bool OnDeviceWakeWord::stride_audio_samples_(int16_t **audio_samples, StreamBufferHandle_t &ring_buffer) {
   // Copy 320 bytes (160 samples over 10 ms) into preprocessor_audio_buffer_ from history in
   // preprocessor_stride_buffer_
   memcpy((void *) (this->preprocessor_audio_buffer_), (void *) (this->preprocessor_stride_buffer_),
          HISTORY_SAMPLES_TO_KEEP * sizeof(int16_t));
 
-  if (rb_bytes_filled(ring_buffer) < NEW_SAMPLES_TO_GET * sizeof(int16_t)) {
+  if (xStreamBufferBytesAvailable(ring_buffer) < NEW_SAMPLES_TO_GET * sizeof(int16_t)) {
     ESP_LOGD(TAG_LOCAL, "Audio Buffer not full enough");
     return false;
   }
 
   // Copy 640 bytes (320 samples over 20 ms) from the ring buffer
   // The first 320 bytes (160 samples over 10 ms) will be from history
-  int bytes_read = rb_read(ring_buffer, ((char *) (this->preprocessor_audio_buffer_ + HISTORY_SAMPLES_TO_KEEP)),
+  int bytes_read = xStreamBufferReceive(ring_buffer, ((void *) (this->preprocessor_audio_buffer_ + HISTORY_SAMPLES_TO_KEEP)),
                            NEW_SAMPLES_TO_GET * sizeof(int16_t), pdMS_TO_TICKS(200));
 
   if (bytes_read < 0) {

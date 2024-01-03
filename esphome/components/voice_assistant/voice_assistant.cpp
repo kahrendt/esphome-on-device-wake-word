@@ -176,7 +176,7 @@ void VoiceAssistant::loop() {
       }
       break;
     }
-#ifdef USE_ESP_ADF
+
     case State::WAIT_FOR_WAKE_WORD: {
       this->read_microphone_();
       ESP_LOGD(TAG, "Waiting for wake word...");
@@ -185,7 +185,7 @@ void VoiceAssistant::loop() {
     }
     case State::WAITING_FOR_WAKE_WORD: {
       size_t bytes_read = this->read_microphone_();
-      bool wakeword_detected = this->local_wake_word_->detect_wakeword(this->ring_buffer_);
+      bool wakeword_detected = this->local_wake_word_->detect_wakeword(this->stream_buffer_);
 
       if (wakeword_detected) {
         this->set_state_(State::START_PIPELINE, State::STREAMING_MICROPHONE);
@@ -201,10 +201,34 @@ void VoiceAssistant::loop() {
     }
     case State::WAITING_FOR_VAD: {
       size_t bytes_read = this->read_microphone_();
+      bool speech_detected = false;
       if (bytes_read > 0) {
+#ifdef USE_ESP_ADF
         vad_state_t vad_state =
             vad_process(this->vad_instance_, this->input_buffer_, SAMPLE_RATE_HZ, VAD_FRAME_LENGTH_MS);
         if (vad_state == VAD_SPEECH) {
+          speech_detected = true;
+        }
+#else
+        size_t num_samples = bytes_read / sizeof(int16_t);
+        uint32_t sum = 0;
+        for (int i = 0; i < num_samples; i++) {
+          int16_t in = this->input_buffer_[i];
+          sum += ((int32_t) in * in);
+        }
+        uint16_t rms = sqrt(sum / num_samples);
+        if (this->noise_floor_ == 0) {
+          this->noise_floor_ = rms;  // initialize
+        }
+
+        float snr = 20.0 * log10f((float) rms / this->noise_floor_);
+        if (snr >= SNR_TRESHOLD_DB) {
+          speech_detected = true;
+        } else {
+          this->noise_floor_ = (((uint32_t) 15 * this->noise_floor_) + rms) / 16;
+        }
+#endif
+        if (speech_detected) {
           if (this->vad_counter_ < this->vad_threshold_) {
             this->vad_counter_++;
           } else {
@@ -222,7 +246,7 @@ void VoiceAssistant::loop() {
       }
       break;
     }
-#endif
+
     case State::START_PIPELINE: {
       this->read_microphone_();
       ESP_LOGD(TAG, "Requesting start...");
