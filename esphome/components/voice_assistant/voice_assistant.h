@@ -19,9 +19,9 @@
 #endif
 #include "esphome/components/socket/socket.h"
 
+#include <freertos/stream_buffer.h>
 #ifdef USE_ESP_ADF
 #include <esp_vad.h>
-#include <ringbuf.h>
 #endif
 
 #include "on_device_wake_word.h"
@@ -95,9 +95,7 @@ class VoiceAssistant : public Component {
 
   void set_use_wake_word(bool use_wake_word) { this->use_wake_word_ = use_wake_word; }
   void set_use_local_wake_word(bool use_local_wake_word) { this->use_local_wake_word_ = use_local_wake_word; }
-#ifdef USE_ESP_ADF
   void set_vad_threshold(uint8_t vad_threshold) { this->vad_threshold_ = vad_threshold; }
-#endif
 
   void set_noise_suppression_level(uint8_t noise_suppression_level) {
     this->noise_suppression_level_ = noise_suppression_level;
@@ -180,11 +178,13 @@ class VoiceAssistant : public Component {
 
   HighFrequencyLoopRequester high_freq_;
 
-#ifdef USE_ESP_ADF
-  vad_handle_t vad_instance_;
-  ringbuf_handle_t ring_buffer_;
   uint8_t vad_threshold_{5};
   uint8_t vad_counter_{0};
+
+#ifdef USE_ESP_ADF
+  vad_handle_t vad_instance_;
+#else
+  uint16_t noise_floor_{0};
 #endif
 
   bool use_wake_word_;
