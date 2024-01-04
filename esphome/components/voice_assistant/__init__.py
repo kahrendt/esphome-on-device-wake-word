@@ -270,13 +270,13 @@ async def to_code(config):
     cg.add_library(
             name = "ESP_TF",
             repository="https://github.com/h3ndrik/ESP_TF.git",
-            version="f498f834b8728fe2522b62b80a2364ce2a646d61"
+            version="5a72c6bdddc04b637c254daf08a8964dc7334f5f"
         )
 
 
     cg.add_build_flag("-DTF_LITE_STATIC_MEMORY")
     cg.add_build_flag("-DTF_LITE_DISABLE_X86_NEON")
-    #cg.add_build_flag("-DESP_NN")
+    cg.add_build_flag("-DESP_NN")
     cg.add_build_flag("-DCONFIG_IDF_TARGET_ESP32")
     # CONFIG_IDF_TARGET_ESP32S3
 
