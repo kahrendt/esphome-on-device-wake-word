@@ -194,7 +194,7 @@ bool OnDeviceWakeWord::detect_wakeword(StreamBufferHandle_t &ring_buffer) {
 }
 
 bool OnDeviceWakeWord::slice_available_(StreamBufferHandle_t &ring_buffer) {
-  uint8_t slices_to_process = rb_bytes_filled(ring_buffer) / (NEW_SAMPLES_TO_GET * sizeof(int16_t));
+  uint8_t slices_to_process = xStreamBufferBytesAvailable(ring_buffer) / (NEW_SAMPLES_TO_GET * sizeof(int16_t));
 
   if (xStreamBufferBytesAvailable(ring_buffer) > NEW_SAMPLES_TO_GET*sizeof(int16_t)) {
     return true;
