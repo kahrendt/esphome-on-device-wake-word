@@ -23,6 +23,7 @@ static const size_t BUFFER_SIZE = 1000 * SAMPLE_RATE_HZ / 1000;      // 1s
 static const size_t SEND_BUFFER_SIZE = INPUT_BUFFER_SIZE * sizeof(int16_t);
 static const size_t RECEIVE_SIZE = 1024;
 static const size_t SPEAKER_BUFFER_SIZE = 16 * RECEIVE_SIZE;
+static const float SNR_TRESHOLD_DB = 10.0;
 
 float VoiceAssistant::get_setup_priority() const { return setup_priority::AFTER_CONNECTION; }
 
@@ -86,7 +87,9 @@ void VoiceAssistant::setup() {
     return;
   }
 
+#ifdef USE_ESP_ADF
   this->vad_instance_ = vad_create(VAD_MODE_4);
+#endif
 
   this->stream_buffer_ = xStreamBufferCreate(BUFFER_SIZE * sizeof(int16_t), 0);
   if (this->stream_buffer_ == nullptr) {

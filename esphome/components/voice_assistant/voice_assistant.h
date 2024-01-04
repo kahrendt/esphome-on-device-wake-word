@@ -179,6 +179,8 @@ class VoiceAssistant : public Component {
 
   HighFrequencyLoopRequester high_freq_;
 
+  StreamBufferHandle_t stream_buffer_;
+
   uint8_t vad_threshold_{5};
   uint8_t vad_counter_{0};
 
