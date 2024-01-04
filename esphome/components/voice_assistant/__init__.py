@@ -270,7 +270,7 @@ async def to_code(config):
     cg.add_library(
             name = "ESP_TF",
             repository="https://github.com/h3ndrik/ESP_TF.git",
-            version="f51379aeba0207a2fdb8beb7b1a63727b38ae167"
+            version="f498f834b8728fe2522b62b80a2364ce2a646d61"
         )
 
 
