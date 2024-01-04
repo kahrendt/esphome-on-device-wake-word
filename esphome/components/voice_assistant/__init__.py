@@ -261,18 +261,7 @@ async def to_code(config):
         )
 
     cg.add_define("USE_VOICE_ASSISTANT")
-    esp32.add_idf_component(
-        name="esp-tflite-micro",
-        repo="https://github.com/espressif/esp-tflite-micro",
-        # path="components",
-        # components=["esp-radar"],
-    )
-    # esp32.add_idf_component(
-    #     name="esp-nn",
-    #     repo="https://github.com/espressif/esp-nn",
-    #     # path="components",
-    #     # components=["esp-radar"],
-    # )
+    cg.add_library("https://github.com/h3ndrik/tflite-micro-arduino-library.git")
 
     cg.add_build_flag("-DTF_LITE_STATIC_MEMORY")
     cg.add_build_flag("-DTF_LITE_DISABLE_X86_NEON")
