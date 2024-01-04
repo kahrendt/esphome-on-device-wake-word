@@ -261,7 +261,11 @@ async def to_code(config):
         )
 
     cg.add_define("USE_VOICE_ASSISTANT")
-    cg.add_library("https://github.com/h3ndrik/tflite-micro-arduino-library.git")
+    cg.add_library(
+            name = "TFLite-Micro",
+            repository="https://github.com/h3ndrik/tflite-micro-arduino-library.git",
+            version="dd363b81abcc45d1d2447063972165ccc3dcc258"
+        )
 
     cg.add_build_flag("-DTF_LITE_STATIC_MEMORY")
     cg.add_build_flag("-DTF_LITE_DISABLE_X86_NEON")
