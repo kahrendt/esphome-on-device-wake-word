@@ -264,10 +264,14 @@ async def to_code(config):
 #    cg.add_library(
 #            name = "TFLite-Micro",
 #            repository="https://github.com/h3ndrik/tflite-micro-arduino-library.git",
-#            version="dd363b81abcc45d1d2447063972165ccc3dcc258"
+#            version="a30071d33b12cd29978febfbd7f1f90b1228a6c2"
 #        )
     cg.add_library("nickjgniklu/ESP_TF", "1.0.0")
-
+    cg.add_library(
+            name = "ESP_TF",
+            repository="https://github.com/h3ndrik/ESP_TF.git",
+            version="f51379aeba0207a2fdb8beb7b1a63727b38ae167"
+        )
 
 
     cg.add_build_flag("-DTF_LITE_STATIC_MEMORY")
