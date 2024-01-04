@@ -1,5 +1,6 @@
 #pragma once
 
+#include <freertos/FreeRTOS.h>
 #include <freertos/stream_buffer.h>
 
 #include "tensorflow/lite/micro/system_setup.h"

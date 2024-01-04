@@ -19,6 +19,7 @@
 #endif
 #include "esphome/components/socket/socket.h"
 
+#include <freertos/FreeRTOS.h>
 #include <freertos/stream_buffer.h>
 #ifdef USE_ESP_ADF
 #include <esp_vad.h>
