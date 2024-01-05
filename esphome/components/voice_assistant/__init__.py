@@ -266,11 +266,11 @@ async def to_code(config):
 #            repository="https://github.com/h3ndrik/tflite-micro-arduino-library.git",
 #            version="a30071d33b12cd29978febfbd7f1f90b1228a6c2"
 #        )
-    cg.add_library("nickjgniklu/ESP_TF", "1.0.0")
+    #cg.add_library("nickjgniklu/ESP_TF", "1.0.0")
     cg.add_library(
             name = "ESP_TF",
             repository="https://github.com/h3ndrik/ESP_TF.git",
-            version="193a61c31674db448be4224f82a802345d6170f9"
+            version="a41894f4b5a2c2d3e2268d875437592294594390"
         )
 
 
