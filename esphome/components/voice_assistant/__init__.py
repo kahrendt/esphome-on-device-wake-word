@@ -9,6 +9,7 @@ from esphome.const import (
     CONF_ON_CLIENT_CONNECTED,
     CONF_ON_CLIENT_DISCONNECTED,
 )
+from esphome.core import CORE
 from esphome import automation
 from esphome.automation import register_action, register_condition
 from esphome.components import microphone, speaker, media_player, esp32
@@ -261,18 +262,31 @@ async def to_code(config):
         )
 
     cg.add_define("USE_VOICE_ASSISTANT")
-#    cg.add_library(
-#            name = "TFLite-Micro",
-#            repository="https://github.com/h3ndrik/tflite-micro-arduino-library.git",
-#            version="a30071d33b12cd29978febfbd7f1f90b1228a6c2"
-#        )
-    #cg.add_library("nickjgniklu/ESP_TF", "1.0.0")
-    cg.add_library(
-            name = "ESP_TF",
-            repository="https://github.com/h3ndrik/ESP_TF.git",
-            version="a41894f4b5a2c2d3e2268d875437592294594390"
+    if CORE.using_esp_idf:
+        esp32.add_idf_component(
+            name="esp-tflite-micro",
+            repo="https://github.com/espressif/esp-tflite-micro",
+            # path="components",
+            # components=["esp-radar"],
         )
-
+        # esp32.add_idf_component(
+        #     name="esp-nn",
+        #     repo="https://github.com/espressif/esp-nn",
+        #     # path="components",
+        #     # components=["esp-radar"],
+        # )
+    if CORE.using_arduino:
+#        cg.add_library(
+#                name = "TFLite-Micro",
+#                repository="https://github.com/h3ndrik/tflite-micro-arduino-library.git",
+#                version="a30071d33b12cd29978febfbd7f1f90b1228a6c2"
+#            )
+        #cg.add_library("nickjgniklu/ESP_TF", "1.0.0")
+        cg.add_library(
+                name = "ESP_TF",
+                repository="https://github.com/h3ndrik/ESP_TF.git",
+                version="a41894f4b5a2c2d3e2268d875437592294594390"
+            )
 
     cg.add_build_flag("-DTF_LITE_STATIC_MEMORY")
     cg.add_build_flag("-DTF_LITE_DISABLE_X86_NEON")
