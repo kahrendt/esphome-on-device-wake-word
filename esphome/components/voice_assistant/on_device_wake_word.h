@@ -42,12 +42,6 @@ static const uint32_t STREAMING_MODEL_ARENA_SIZE = 1024 * 1000;
 static const uint32_t STREAMING_MODEL_VARIABLE_ARENA_SIZE = 10 * 1000;
 static const uint32_t PREPROCESSOR_ARENA_SIZE = 16 * 1024;
 
-// Increasing either of these will reduce the rate of false acceptances while increasing the false rejection rate
-// IMPLEMENTATION DETAILS: These should be exposed to the user for modification. It would also be nice if we could set
-// defaults specific to each model
-static const float STREAMING_MODEL_PROBABILITY_CUTOFF = 0.5;
-static const size_t STREAMING_MODEL_SLIDING_WINDOW_MEAN_LENGTH = 10;
-
 class OnDeviceWakeWord {
  public:
   bool intialize_models();
@@ -61,14 +55,24 @@ class OnDeviceWakeWord {
    */
   bool detect_wakeword(ringbuf_handle_t &ring_buffer);
 
+  void set_streaming_model_probability_cutoff(float streaming_model_probability_cutoff) {
+    this->streaming_model_probability_cutoff_ = streaming_model_probability_cutoff;
+  }
+  void set_streaming_model_sliding_window_mean_length(size_t length);
+
  protected:
   const tflite::Model *preprocessor_model_{nullptr};
   const tflite::Model *streaming_model_{nullptr};
   tflite::MicroInterpreter *streaming_interpreter_{nullptr};
   tflite::MicroInterpreter *preprocessor_interperter_{nullptr};
 
-  float recent_streaming_probabilities_[STREAMING_MODEL_SLIDING_WINDOW_MEAN_LENGTH];
+  std::vector<float> recent_streaming_probabilities_;
   size_t last_n_index_{0};
+
+  // Increasing either of these will reduce the rate of false acceptances while increasing the false rejection rate
+  // IMPLEMENTATION DETAILS: Allow setting defaults specific to each model
+  float streaming_model_probability_cutoff_{0.5};
+  size_t streaming_model_sliding_window_mean_length_{10};
 
   // When the wake word detection first starts or after the word has been detected once, we ignore the first trained
   // spectrogram's length of probabilities
