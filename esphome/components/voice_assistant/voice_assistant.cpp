@@ -126,8 +126,13 @@ int VoiceAssistant::read_microphone_() {
     size_t available = xStreamBufferSpacesAvailable(this->stream_buffer_);
     if (available < bytes_read) {
       xStreamBufferReceive(this->stream_buffer_, (void *) this->send_buffer_, bytes_read - available, 0);
+      ESP_LOGD(TAG, "ring buffer debug %d", bytes_read - available);
     }
-    xStreamBufferSend(this->stream_buffer_, (void *) this->input_buffer_, bytes_read, 0);
+    size_t xBytesSent = xStreamBufferSend(this->stream_buffer_, (void *) this->input_buffer_, bytes_read, 0);
+    if(xBytesSent != bytes_read) {
+      ESP_LOGD(TAG, "ring buffer overflow");
+    }
+
   } else {
     ESP_LOGD(TAG, "microphone not running");
   }
