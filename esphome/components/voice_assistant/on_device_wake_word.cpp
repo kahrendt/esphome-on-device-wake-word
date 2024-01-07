@@ -20,7 +20,12 @@
 namespace esphome {
 namespace voice_assistant {
 
-bool OnDeviceWakeWord::intialize_models() {
+OnDeviceWakeWord::OnDeviceWakeWord(float streaming_model_probability_cutoff,
+                                   size_t streaming_model_sliding_window_mean_length)
+    : streaming_model_probability_cutoff_{streaming_model_probability_cutoff},
+      streaming_model_sliding_window_mean_length_{streaming_model_sliding_window_mean_length} {}
+
+bool OnDeviceWakeWord::initialize_models() {
   ExternalRAMAllocator<uint8_t> arena_allocator(ExternalRAMAllocator<uint8_t>::ALLOW_FAILURE);
   ExternalRAMAllocator<int8_t> features_allocator(ExternalRAMAllocator<int8_t>::ALLOW_FAILURE);
   ExternalRAMAllocator<int16_t> audio_samples_allocator(ExternalRAMAllocator<int16_t>::ALLOW_FAILURE);

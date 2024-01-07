@@ -34,17 +34,23 @@ CONF_ON_TTS_STREAM_END = "on_tts_stream_end"
 CONF_ON_WAKE_WORD_DETECTED = "on_wake_word_detected"
 
 CONF_SILENCE_DETECTION = "silence_detection"
+CONF_STREAMING_MODEL_PROBABILITY_CUTOFF = "streaming_model_probability_cutoff"
+CONF_STREAMING_MODEL_SLIDING_WINDOW_MEAN_LENGTH = (
+    "streaming_model_sliding_window_mean_length"
+)
 CONF_USE_WAKE_WORD = "use_wake_word"
 CONF_USE_LOCAL_WAKE_WORD = "use_local_wake_word"
 CONF_VAD_THRESHOLD = "vad_threshold"
 
 CONF_AUTO_GAIN = "auto_gain"
+CONF_LOCAL_WAKE_WORD_ID = "local_wake_word_id"
 CONF_NOISE_SUPPRESSION_LEVEL = "noise_suppression_level"
 CONF_VOLUME_MULTIPLIER = "volume_multiplier"
 
 
 voice_assistant_ns = cg.esphome_ns.namespace("voice_assistant")
 VoiceAssistant = voice_assistant_ns.class_("VoiceAssistant", cg.Component)
+OnDeviceWakeWord = voice_assistant_ns.class_("OnDeviceWakeWord")
 
 StartAction = voice_assistant_ns.class_(
     "StartAction", automation.Action, cg.Parented.template(VoiceAssistant)
@@ -77,6 +83,7 @@ CONFIG_SCHEMA = cv.All(
     cv.Schema(
         {
             cv.GenerateID(): cv.declare_id(VoiceAssistant),
+            cv.GenerateID(CONF_LOCAL_WAKE_WORD_ID): cv.declare_id(OnDeviceWakeWord),
             cv.GenerateID(CONF_MICROPHONE): cv.use_id(microphone.Microphone),
             cv.Exclusive(CONF_SPEAKER, "output"): cv.use_id(speaker.Speaker),
             cv.Exclusive(CONF_MEDIA_PLAYER, "output"): cv.use_id(
@@ -84,6 +91,12 @@ CONFIG_SCHEMA = cv.All(
             ),
             cv.Optional(CONF_USE_WAKE_WORD, default=False): cv.boolean,
             cv.Optional(CONF_USE_LOCAL_WAKE_WORD, default=False): cv.boolean,
+            cv.Optional(
+                CONF_STREAMING_MODEL_PROBABILITY_CUTOFF, default=0.5
+            ): cv.float_,
+            cv.Optional(
+                CONF_STREAMING_MODEL_SLIDING_WINDOW_MEAN_LENGTH, default=10
+            ): cv.positive_int,
             cv.Optional(CONF_VAD_THRESHOLD): cv.All(
                 cv.requires_component("esp_adf"), cv.only_with_esp_idf, cv.uint8_t
             ),
@@ -152,6 +165,13 @@ async def to_code(config):
 
     cg.add(var.set_use_wake_word(config[CONF_USE_WAKE_WORD]))
     cg.add(var.set_use_local_wake_word(config[CONF_USE_LOCAL_WAKE_WORD]))
+    if config[CONF_USE_LOCAL_WAKE_WORD] is True:
+        odww = cg.new_Pvariable(
+            config[CONF_LOCAL_WAKE_WORD_ID],
+            config[CONF_STREAMING_MODEL_PROBABILITY_CUTOFF],
+            config[CONF_STREAMING_MODEL_SLIDING_WINDOW_MEAN_LENGTH],
+        )
+        cg.add(var.set_local_wake_word(odww))
 
     if (vad_threshold := config.get(CONF_VAD_THRESHOLD)) is not None:
         cg.add(var.set_vad_threshold(vad_threshold))

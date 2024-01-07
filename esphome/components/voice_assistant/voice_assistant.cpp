@@ -105,9 +105,8 @@ void VoiceAssistant::setup() {
     return;
   }
 
-  this->local_wake_word_ = new OnDeviceWakeWord();
-  if (!this->local_wake_word_->intialize_models()) {
-    ESP_LOGE(TAG, "Failed to setup local wake word inference models.");
+  if (this->local_wake_word_ != nullptr && !this->local_wake_word_->initialize_models()) {
+    ESP_LOGE(TAG, "Failed to set up local wake word inference models");
     this->mark_failed();
     return;
   }
@@ -191,7 +190,8 @@ void VoiceAssistant::loop() {
     }
     case State::WAITING_FOR_WAKE_WORD: {
       size_t bytes_read = this->read_microphone_();
-      bool wakeword_detected = this->local_wake_word_->detect_wakeword(this->ring_buffer_);
+      bool wakeword_detected =
+          this->local_wake_word_ != nullptr ? this->local_wake_word_->detect_wakeword(this->ring_buffer_) : false;
 
       if (wakeword_detected) {
         this->set_state_(State::START_PIPELINE, State::STREAMING_MICROPHONE);

@@ -44,7 +44,10 @@ static const uint32_t PREPROCESSOR_ARENA_SIZE = 16 * 1024;
 
 class OnDeviceWakeWord {
  public:
-  bool intialize_models();
+  OnDeviceWakeWord() {}
+  OnDeviceWakeWord(float streaming_model_probability_cutoff, size_t streaming_model_sliding_window_mean_length);
+
+  bool initialize_models();
 
   /** Detects if wake word has been said
    *
