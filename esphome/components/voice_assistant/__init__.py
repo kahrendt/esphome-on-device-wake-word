@@ -9,6 +9,7 @@ from esphome.const import (
     CONF_ON_CLIENT_CONNECTED,
     CONF_ON_CLIENT_DISCONNECTED,
 )
+from esphome.core import CORE
 from esphome import automation
 from esphome.automation import register_action, register_condition
 from esphome.components import microphone, speaker, media_player, esp32
@@ -84,9 +85,7 @@ CONFIG_SCHEMA = cv.All(
             ),
             cv.Optional(CONF_USE_WAKE_WORD, default=False): cv.boolean,
             cv.Optional(CONF_USE_LOCAL_WAKE_WORD, default=False): cv.boolean,
-            cv.Optional(CONF_VAD_THRESHOLD): cv.All(
-                cv.requires_component("esp_adf"), cv.only_with_esp_idf, cv.uint8_t
-            ),
+            cv.Optional(CONF_VAD_THRESHOLD): cv.All(cv.uint8_t),
             cv.Optional(CONF_NOISE_SUPPRESSION_LEVEL, default=0): cv.int_range(0, 4),
             cv.Optional(CONF_AUTO_GAIN, default="0dBFS"): cv.All(
                 cv.float_with_unit("decibel full scale", "(dBFS|dbfs|DBFS)"),
@@ -263,22 +262,37 @@ async def to_code(config):
         )
 
     cg.add_define("USE_VOICE_ASSISTANT")
-    esp32.add_idf_component(
-        name="esp-tflite-micro",
-        repo="https://github.com/espressif/esp-tflite-micro",
-        # path="components",
-        # components=["esp-radar"],
-    )
-    # esp32.add_idf_component(
-    #     name="esp-nn",
-    #     repo="https://github.com/espressif/esp-nn",
-    #     # path="components",
-    #     # components=["esp-radar"],
-    # )
+    if CORE.using_esp_idf:
+        esp32.add_idf_component(
+            name="esp-tflite-micro",
+            repo="https://github.com/espressif/esp-tflite-micro",
+            # path="components",
+            # components=["esp-radar"],
+        )
+        # esp32.add_idf_component(
+        #     name="esp-nn",
+        #     repo="https://github.com/espressif/esp-nn",
+        #     # path="components",
+        #     # components=["esp-radar"],
+        # )
+    if CORE.using_arduino:
+#        cg.add_library(
+#                name = "TFLite-Micro",
+#                repository="https://github.com/h3ndrik/tflite-micro-arduino-library.git",
+#                version="a30071d33b12cd29978febfbd7f1f90b1228a6c2"
+#            )
+        #cg.add_library("nickjgniklu/ESP_TF", "1.0.0")
+        cg.add_library(
+                name = "ESP_TF",
+                repository="https://github.com/h3ndrik/ESP_TF.git",
+                version="a41894f4b5a2c2d3e2268d875437592294594390"
+            )
 
     cg.add_build_flag("-DTF_LITE_STATIC_MEMORY")
     cg.add_build_flag("-DTF_LITE_DISABLE_X86_NEON")
     cg.add_build_flag("-DESP_NN")
+    cg.add_build_flag("-DCONFIG_IDF_TARGET_ESP32")
+    # CONFIG_IDF_TARGET_ESP32S3
 
 
 VOICE_ASSISTANT_ACTION_SCHEMA = cv.Schema({cv.GenerateID(): cv.use_id(VoiceAssistant)})

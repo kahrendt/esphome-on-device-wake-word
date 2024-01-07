@@ -23,6 +23,7 @@ static const size_t BUFFER_SIZE = 1000 * SAMPLE_RATE_HZ / 1000;      // 1s
 static const size_t SEND_BUFFER_SIZE = INPUT_BUFFER_SIZE * sizeof(int16_t);
 static const size_t RECEIVE_SIZE = 1024;
 static const size_t SPEAKER_BUFFER_SIZE = 16 * RECEIVE_SIZE;
+static const float SNR_TRESHOLD_DB = 10.0;
 
 float VoiceAssistant::get_setup_priority() const { return setup_priority::AFTER_CONNECTION; }
 
@@ -88,14 +89,14 @@ void VoiceAssistant::setup() {
 
 #ifdef USE_ESP_ADF
   this->vad_instance_ = vad_create(VAD_MODE_4);
+#endif
 
-  this->ring_buffer_ = rb_create(BUFFER_SIZE, sizeof(int16_t));
-  if (this->ring_buffer_ == nullptr) {
+  this->stream_buffer_ = xStreamBufferCreate(BUFFER_SIZE * sizeof(int16_t), 0);
+  if (this->stream_buffer_ == nullptr) {
     ESP_LOGW(TAG, "Could not allocate ring buffer");
     this->mark_failed();
     return;
   }
-#endif
 
   ExternalRAMAllocator<uint8_t> send_allocator(ExternalRAMAllocator<uint8_t>::ALLOW_FAILURE);
   this->send_buffer_ = send_allocator.allocate(SEND_BUFFER_SIZE);
@@ -121,14 +122,17 @@ int VoiceAssistant::read_microphone_() {
       memset(this->input_buffer_, 0, INPUT_BUFFER_SIZE * sizeof(int16_t));
       return 0;
     }
-#ifdef USE_ESP_ADF
     // Write audio into ring buffer
-    int available = rb_bytes_available(this->ring_buffer_);
+    size_t available = xStreamBufferSpacesAvailable(this->stream_buffer_);
     if (available < bytes_read) {
-      rb_read(this->ring_buffer_, nullptr, bytes_read - available, 0);
+      xStreamBufferReceive(this->stream_buffer_, (void *) this->send_buffer_, bytes_read - available, 0);
+      ESP_LOGD(TAG, "ring buffer debug %d", bytes_read - available);
     }
-    rb_write(this->ring_buffer_, (char *) this->input_buffer_, bytes_read, 0);
-#endif
+    size_t xBytesSent = xStreamBufferSend(this->stream_buffer_, (void *) this->input_buffer_, bytes_read, 0);
+    if(xBytesSent != bytes_read) {
+      ESP_LOGD(TAG, "ring buffer overflow");
+    }
+
   } else {
     ESP_LOGD(TAG, "microphone not running");
   }
@@ -150,15 +154,13 @@ void VoiceAssistant::loop() {
   switch (this->state_) {
     case State::IDLE: {
       if (this->continuous_ && this->desired_state_ == State::IDLE) {
-#ifdef USE_ESP_ADF
         if (this->use_wake_word_) {
-          rb_reset(this->ring_buffer_);
+          xStreamBufferReset(this->stream_buffer_);
           this->set_state_(State::START_MICROPHONE, State::WAIT_FOR_VAD);
         } else if (this->use_local_wake_word_) {
-          rb_reset(this->ring_buffer_);
+          xStreamBufferReset(this->stream_buffer_);
           this->set_state_(State::START_MICROPHONE, State::WAIT_FOR_WAKE_WORD);
         } else
-#endif
         {
           this->set_state_(State::START_PIPELINE, State::START_MICROPHONE);
         }
@@ -182,7 +184,7 @@ void VoiceAssistant::loop() {
       }
       break;
     }
-#ifdef USE_ESP_ADF
+
     case State::WAIT_FOR_WAKE_WORD: {
       this->read_microphone_();
       ESP_LOGD(TAG, "Waiting for wake word...");
@@ -191,7 +193,7 @@ void VoiceAssistant::loop() {
     }
     case State::WAITING_FOR_WAKE_WORD: {
       size_t bytes_read = this->read_microphone_();
-      bool wakeword_detected = this->local_wake_word_->detect_wakeword(this->ring_buffer_);
+      bool wakeword_detected = this->local_wake_word_->detect_wakeword(this->stream_buffer_);
 
       if (wakeword_detected) {
         this->set_state_(State::START_PIPELINE, State::STREAMING_MICROPHONE);
@@ -207,10 +209,34 @@ void VoiceAssistant::loop() {
     }
     case State::WAITING_FOR_VAD: {
       size_t bytes_read = this->read_microphone_();
+      bool speech_detected = false;
       if (bytes_read > 0) {
+#ifdef USE_ESP_ADF
         vad_state_t vad_state =
             vad_process(this->vad_instance_, this->input_buffer_, SAMPLE_RATE_HZ, VAD_FRAME_LENGTH_MS);
         if (vad_state == VAD_SPEECH) {
+          speech_detected = true;
+        }
+#else
+        size_t num_samples = bytes_read / sizeof(int16_t);
+        uint32_t sum = 0;
+        for (int i = 0; i < num_samples; i++) {
+          int16_t in = this->input_buffer_[i];
+          sum += ((int32_t) in * in);
+        }
+        uint16_t rms = sqrt(sum / num_samples);
+        if (this->noise_floor_ == 0) {
+          this->noise_floor_ = rms;  // initialize
+        }
+
+        float snr = 20.0 * log10f((float) rms / this->noise_floor_);
+        if (snr >= SNR_TRESHOLD_DB) {
+          speech_detected = true;
+        } else {
+          this->noise_floor_ = (((uint32_t) 15 * this->noise_floor_) + rms) / 16;
+        }
+#endif
+        if (speech_detected) {
           if (this->vad_counter_ < this->vad_threshold_) {
             this->vad_counter_++;
           } else {
@@ -228,7 +254,7 @@ void VoiceAssistant::loop() {
       }
       break;
     }
-#endif
+
     case State::START_PIPELINE: {
       this->read_microphone_();
       ESP_LOGD(TAG, "Requesting start...");
@@ -265,18 +291,11 @@ void VoiceAssistant::loop() {
     }
     case State::STREAMING_MICROPHONE: {
       size_t bytes_read = this->read_microphone_();
-#ifdef USE_ESP_ADF
-      if (rb_bytes_filled(this->ring_buffer_) >= SEND_BUFFER_SIZE) {
-        rb_read(this->ring_buffer_, (char *) this->send_buffer_, SEND_BUFFER_SIZE, 0);
-        this->socket_->sendto(this->send_buffer_, SEND_BUFFER_SIZE, 0, (struct sockaddr *) &this->dest_addr_,
+      if (xStreamBufferBytesAvailable(this->stream_buffer_) >= SEND_BUFFER_SIZE) {
+        bytes_read = xStreamBufferReceive(this->stream_buffer_, (void *) this->send_buffer_, SEND_BUFFER_SIZE, 0);
+        this->socket_->sendto(this->send_buffer_, bytes_read, 0, (struct sockaddr *) &this->dest_addr_,
                               sizeof(this->dest_addr_));
       }
-#else
-      if (bytes_read > 0) {
-        this->socket_->sendto(this->input_buffer_, bytes_read, 0, (struct sockaddr *) &this->dest_addr_,
-                              sizeof(this->dest_addr_));
-      }
-#endif
       break;
     }
     case State::STOP_MICROPHONE: {
@@ -505,15 +524,13 @@ void VoiceAssistant::request_start(bool continuous, bool silence_detection) {
   if (this->state_ == State::IDLE) {
     this->continuous_ = continuous;
     this->silence_detection_ = silence_detection;
-#ifdef USE_ESP_ADF
     if (this->use_wake_word_) {
-      rb_reset(this->ring_buffer_);
+      xStreamBufferReset(this->stream_buffer_);
       this->set_state_(State::START_MICROPHONE, State::WAIT_FOR_VAD);
     } else if (this->use_local_wake_word_) {
-      rb_reset(this->ring_buffer_);
+      xStreamBufferReset(this->stream_buffer_);
       this->set_state_(State::START_MICROPHONE, State::WAIT_FOR_WAKE_WORD);
     } else
-#endif
     {
       this->set_state_(State::START_PIPELINE, State::START_MICROPHONE);
     }
@@ -655,17 +672,15 @@ void VoiceAssistant::on_event(const api::VoiceAssistantEventResponse &msg) {
     case api::enums::VOICE_ASSISTANT_RUN_END: {
       ESP_LOGD(TAG, "Assist Pipeline ended");
       if (this->state_ == State::STREAMING_MICROPHONE) {
-#ifdef USE_ESP_ADF
         if (this->use_wake_word_) {
-          rb_reset(this->ring_buffer_);
+          xStreamBufferReset(this->stream_buffer_);
           // No need to stop the microphone since we didn't use the speaker
           this->set_state_(State::WAIT_FOR_VAD, State::WAITING_FOR_VAD);
         } else if (this->use_local_wake_word_) {
-          rb_reset(this->ring_buffer_);
+          xStreamBufferReset(this->stream_buffer_);
           // No need to stop the microphone since we didn't use the speaker
           this->set_state_(State::WAIT_FOR_WAKE_WORD, State::WAITING_FOR_WAKE_WORD);
         } else
-#endif
         {
           this->set_state_(State::IDLE, State::IDLE);
         }
