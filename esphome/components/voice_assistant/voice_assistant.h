@@ -95,6 +95,7 @@ class VoiceAssistant : public Component {
 
   void set_use_wake_word(bool use_wake_word) { this->use_wake_word_ = use_wake_word; }
   void set_use_local_wake_word(bool use_local_wake_word) { this->use_local_wake_word_ = use_local_wake_word; }
+  void set_local_wake_word(OnDeviceWakeWord *local_wake_word) { this->local_wake_word_ = local_wake_word; }
 #ifdef USE_ESP_ADF
   void set_vad_threshold(uint8_t vad_threshold) { this->vad_threshold_ = vad_threshold; }
 #endif
@@ -202,7 +203,7 @@ class VoiceAssistant : public Component {
   State state_{State::IDLE};
   State desired_state_{State::IDLE};
 
-  OnDeviceWakeWord *local_wake_word_;
+  OnDeviceWakeWord *local_wake_word_{nullptr};
 };
 
 template<typename... Ts> class StartAction : public Action<Ts...>, public Parented<VoiceAssistant> {

@@ -15,36 +15,39 @@ namespace voice_assistant {
 static const char *const TAG_LOCAL = "local_wake_word";
 
 // Constants used for audio preprocessor model
-enum {
-  SPECTROGRAM_LENGTH = 74,  // The number of slices in the spectrogram when trained IMPLEMENTATION_DETAILS: This can depend on the model, but doesn't directly affect any of the inference code
+//
+// The number of slices in the spectrogram when trained IMPLEMENTATION_DETAILS: This can depend on the model, but
+// doesn't directly affect any of the inference code
+static const uint8_t SPECTROGRAM_LENGTH = 74;
 
-  // The following are dictated by the preprocessor model
-  PREPROCESSOR_FEATURE_SIZE = 40,   // The number of features the audio preprocessor generates per slice
-  FEATURE_STRIDE_MS = 20,           // How frequently the preprocessor generates a new set of features
-  FEATURE_DURATION_MS = 30,         // Duration of each slice used as input into the preprocessor
-  AUDIO_SAMPLE_FREQUENCY = 16000,   // Audio sample frequency in hertz
-  HISTORY_SAMPLES_TO_KEEP = ((FEATURE_DURATION_MS - FEATURE_STRIDE_MS) * (AUDIO_SAMPLE_FREQUENCY / 1000)),
-  NEW_SAMPLES_TO_GET = (FEATURE_STRIDE_MS * (AUDIO_SAMPLE_FREQUENCY / 1000)),
-  SAMPLE_DURATION_COUNT = FEATURE_DURATION_MS * AUDIO_SAMPLE_FREQUENCY / 1000,
-  MAX_AUDIO_SAMPLE_SIZE = 512,
-};
+// The following are dictated by the preprocessor model
+//
+// The number of features the audio preprocessor generates per slice
+static const uint8_t PREPROCESSOR_FEATURE_SIZE = 40;
+// How frequently the preprocessor generates a new set of features
+static const uint8_t FEATURE_STRIDE_MS = 20;
+// Duration of each slice used as input into the preprocessor
+static const uint8_t FEATURE_DURATION_MS = 30;
+// Audio sample frequency in hertz
+static const uint16_t AUDIO_SAMPLE_FREQUENCY = 16000;
+static const uint16_t HISTORY_SAMPLES_TO_KEEP =
+    ((FEATURE_DURATION_MS - FEATURE_STRIDE_MS) * (AUDIO_SAMPLE_FREQUENCY / 1000));
+static const uint16_t NEW_SAMPLES_TO_GET = (FEATURE_STRIDE_MS * (AUDIO_SAMPLE_FREQUENCY / 1000));
+static const uint16_t SAMPLE_DURATION_COUNT = FEATURE_DURATION_MS * AUDIO_SAMPLE_FREQUENCY / 1000;
+static const uint16_t MAX_AUDIO_SAMPLE_SIZE = 512;
 
 // Constants used for setting up tensor arenas
 // TODO: Optimize these values; they are currently much larger than needed
-enum {
-  STREAMING_MODEL_ARENA_SIZE = 1024 * 1000,
-  STREAMING_MODEL_VARIABLE_ARENA_SIZE = 10 * 1000,
-  PREPROCESSOR_ARENA_SIZE = 16 * 1024,
-};
-
-// Increasing either of these will reduce the rate of false acceptances while increasing the false rejection rate
-// IMPLEMENTATION DETAILS: These should be exposed to the user for modification. It would also be nice if we could set defaults specific to each model
-static constexpr float STREAMING_MODEL_PROBABILITY_CUTOFF = 0.5;
-static constexpr size_t STREAMING_MODEL_SLIDING_WINDOW_MEAN_LENGTH = 10;
+static const uint32_t STREAMING_MODEL_ARENA_SIZE = 1024 * 1000;
+static const uint32_t STREAMING_MODEL_VARIABLE_ARENA_SIZE = 10 * 1000;
+static const uint32_t PREPROCESSOR_ARENA_SIZE = 16 * 1024;
 
 class OnDeviceWakeWord {
  public:
-  bool intialize_models();
+  OnDeviceWakeWord() {}
+  OnDeviceWakeWord(float streaming_model_probability_cutoff, size_t streaming_model_sliding_window_mean_length);
+
+  bool initialize_models();
 
   /** Detects if wake word has been said
    *
@@ -55,17 +58,29 @@ class OnDeviceWakeWord {
    */
   bool detect_wakeword(ringbuf_handle_t &ring_buffer);
 
+  void set_streaming_model_probability_cutoff(float streaming_model_probability_cutoff) {
+    this->streaming_model_probability_cutoff_ = streaming_model_probability_cutoff;
+  }
+  void set_streaming_model_sliding_window_mean_length(size_t length);
+
  protected:
   const tflite::Model *preprocessor_model_{nullptr};
   const tflite::Model *streaming_model_{nullptr};
   tflite::MicroInterpreter *streaming_interpreter_{nullptr};
   tflite::MicroInterpreter *preprocessor_interperter_{nullptr};
 
-  float recent_streaming_probabilities_[STREAMING_MODEL_SLIDING_WINDOW_MEAN_LENGTH];
+  std::vector<float> recent_streaming_probabilities_;
   size_t last_n_index_{0};
 
-  // When the wake word detection first starts or after the word has been detected once, we ignore the first trained spectrogram's length of probabilities
-  // IMPLEMENTATION DETAILS: A model should be able to set this value, as it may have been trained on a shorter or longer spectrogram
+  // Increasing either of these will reduce the rate of false acceptances while increasing the false rejection rate
+  // IMPLEMENTATION DETAILS: Allow setting defaults specific to each model
+  float streaming_model_probability_cutoff_{0.5};
+  size_t streaming_model_sliding_window_mean_length_{10};
+
+  // When the wake word detection first starts or after the word has been detected once, we ignore the first trained
+  // spectrogram's length of probabilities
+  // IMPLEMENTATION DETAILS: A model should be able to set this value, as it may have been trained on a shorter or
+  // longer spectrogram
   int16_t ignore_windows_{-SPECTROGRAM_LENGTH};
 
   uint8_t *streaming_var_arena_{nullptr};
@@ -96,9 +111,9 @@ class OnDeviceWakeWord {
    * @param audio_data_size The number of samples to use as input to the preprocessor model
    * @param feature_output Array that will store the features
    * @return True if successful, false otherwise.
-  */
+   */
   bool generate_single_feature_(const int16_t *audio_data, const int audio_data_size,
-                                                     int8_t feature_output[PREPROCESSOR_FEATURE_SIZE]);
+                                int8_t feature_output[PREPROCESSOR_FEATURE_SIZE]);
 
   /** Performs inference over the most recent feature slice with the streaming model
    *

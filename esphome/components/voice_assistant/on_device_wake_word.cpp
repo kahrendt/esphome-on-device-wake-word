@@ -20,7 +20,12 @@
 namespace esphome {
 namespace voice_assistant {
 
-bool OnDeviceWakeWord::intialize_models() {
+OnDeviceWakeWord::OnDeviceWakeWord(float streaming_model_probability_cutoff,
+                                   size_t streaming_model_sliding_window_mean_length)
+    : streaming_model_probability_cutoff_{streaming_model_probability_cutoff},
+      streaming_model_sliding_window_mean_length_{streaming_model_sliding_window_mean_length} {}
+
+bool OnDeviceWakeWord::initialize_models() {
   ExternalRAMAllocator<uint8_t> arena_allocator(ExternalRAMAllocator<uint8_t>::ALLOW_FAILURE);
   ExternalRAMAllocator<int8_t> features_allocator(ExternalRAMAllocator<int8_t>::ALLOW_FAILURE);
   ExternalRAMAllocator<int16_t> audio_samples_allocator(ExternalRAMAllocator<int16_t>::ALLOW_FAILURE);
@@ -105,9 +110,7 @@ bool OnDeviceWakeWord::intialize_models() {
     return false;
   }
 
-  for (int n = 0; n < STREAMING_MODEL_SLIDING_WINDOW_MEAN_LENGTH; ++n) {
-    this->recent_streaming_probabilities_[n] = 0.0;
-  }
+  this->recent_streaming_probabilities_.resize(this->streaming_model_sliding_window_mean_length_, 0.0);
 
   return true;
 }
@@ -137,8 +140,7 @@ float OnDeviceWakeWord::perform_streaming_inference_() {
 
   size_t bytes_to_copy = input->bytes;
 
-  memcpy((void *) (tflite::GetTensorData<int8_t>(input)),
-        (const void *) (this->new_features_data_), bytes_to_copy);
+  memcpy((void *) (tflite::GetTensorData<int8_t>(input)), (const void *) (this->new_features_data_), bytes_to_copy);
 
   uint32_t prior_invoke = millis();
 
@@ -152,7 +154,7 @@ float OnDeviceWakeWord::perform_streaming_inference_() {
 
   TfLiteTensor *output = this->streaming_interpreter_->output(0);
 
-  return static_cast<float>(output->data.uint8[0])/255.0;
+  return static_cast<float>(output->data.uint8[0]) / 255.0;
 }
 
 bool OnDeviceWakeWord::detect_wakeword(ringbuf_handle_t &ring_buffer) {
@@ -164,28 +166,27 @@ bool OnDeviceWakeWord::detect_wakeword(ringbuf_handle_t &ring_buffer) {
   float streaming_prob = this->perform_streaming_inference_();
 
   // Add the most recent probability to the sliding window
-  // IMPLEMENTATION DETAILS: This sliding window buffer can be better implemented with an std::deque; the user/model should be able to set the length of the window
   this->recent_streaming_probabilities_[this->last_n_index_] = streaming_prob;
   ++this->last_n_index_;
-  if (this->last_n_index_ == STREAMING_MODEL_SLIDING_WINDOW_MEAN_LENGTH)
+  if (this->last_n_index_ == this->streaming_model_sliding_window_mean_length_)
     this->last_n_index_ = 0;
 
   float sum = 0.0;
-  for (int i = 0; i < STREAMING_MODEL_SLIDING_WINDOW_MEAN_LENGTH; ++i) {
-    sum += this->recent_streaming_probabilities_[i];
+  for (auto &prob : this->recent_streaming_probabilities_) {
+    sum += prob;
   }
 
-  float sliding_window_average = sum/static_cast<float>(STREAMING_MODEL_SLIDING_WINDOW_MEAN_LENGTH);
+  float sliding_window_average = sum / static_cast<float>(this->streaming_model_sliding_window_mean_length_);
 
-  this->ignore_windows_ = std::min(this->ignore_windows_+1, 0);
+  this->ignore_windows_ = std::min(this->ignore_windows_ + 1, 0);
   if (this->ignore_windows_ < 0) {
     return false;
   }
 
-  if (sliding_window_average > STREAMING_MODEL_PROBABILITY_CUTOFF) {
+  if (sliding_window_average > this->streaming_model_probability_cutoff_) {
     this->ignore_windows_ = -SPECTROGRAM_LENGTH;
-    for (int n = 0; n < STREAMING_MODEL_SLIDING_WINDOW_MEAN_LENGTH; ++n) {
-      this->recent_streaming_probabilities_[n] = 0.0;
+    for (auto &prob : this->recent_streaming_probabilities_) {
+      prob = 0;
     }
     return true;
   }
@@ -193,10 +194,15 @@ bool OnDeviceWakeWord::detect_wakeword(ringbuf_handle_t &ring_buffer) {
   return false;
 }
 
+void OnDeviceWakeWord::set_streaming_model_sliding_window_mean_length(size_t length) {
+  this->streaming_model_sliding_window_mean_length_ = length;
+  this->recent_streaming_probabilities_.resize(this->streaming_model_sliding_window_mean_length_, 0.0);
+}
+
 bool OnDeviceWakeWord::slice_available_(ringbuf_handle_t &ring_buffer) {
   uint8_t slices_to_process = rb_bytes_filled(ring_buffer) / (NEW_SAMPLES_TO_GET * sizeof(int16_t));
 
-  if (rb_bytes_filled(ring_buffer) > NEW_SAMPLES_TO_GET*sizeof(int16_t)) {
+  if (rb_bytes_filled(ring_buffer) > NEW_SAMPLES_TO_GET * sizeof(int16_t)) {
     return true;
   }
   return false;
@@ -237,7 +243,7 @@ bool OnDeviceWakeWord::stride_audio_samples_(int16_t **audio_samples, ringbuf_ha
 }
 
 bool OnDeviceWakeWord::generate_single_feature_(const int16_t *audio_data, const int audio_data_size,
-                                                     int8_t feature_output[PREPROCESSOR_FEATURE_SIZE]) {
+                                                int8_t feature_output[PREPROCESSOR_FEATURE_SIZE]) {
   TfLiteTensor *input = this->preprocessor_interperter_->input(0);
   TfLiteTensor *output = this->preprocessor_interperter_->output(0);
   std::copy_n(audio_data, audio_data_size, tflite::GetTensorData<int16_t>(input));
