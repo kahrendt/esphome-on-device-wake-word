@@ -1,18 +1,21 @@
 #pragma once
 
-#include <ringbuf.h>
+#include "esphome/core/automation.h"
+#include "esphome/core/component.h"
 
-#include "tensorflow/lite/micro/system_setup.h"
-#include "tensorflow/lite/schema/schema_generated.h"
+#include "esphome/components/microphone/microphone.h"
+
+#include <freertos/stream_buffer.h>
+
 #include "tensorflow/lite/core/c/common.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
 #include "tensorflow/lite/micro/micro_log.h"
 #include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
+#include "tensorflow/lite/micro/system_setup.h"
+#include "tensorflow/lite/schema/schema_generated.h"
 
 namespace esphome {
-namespace voice_assistant {
-
-static const char *const TAG_LOCAL = "local_wake_word";
+namespace micro_wake_word {
 
 // Constants used for audio preprocessor model
 //
@@ -42,10 +45,25 @@ static const uint32_t STREAMING_MODEL_ARENA_SIZE = 1024 * 1000;
 static const uint32_t STREAMING_MODEL_VARIABLE_ARENA_SIZE = 10 * 1000;
 static const uint32_t PREPROCESSOR_ARENA_SIZE = 16 * 1024;
 
-class OnDeviceWakeWord {
+enum State {
+  IDLE,
+  START_MICROPHONE,
+  STARTING_MICROPHONE,
+  DETECTING_WAKE_WORD,
+  STOP_MICROPHONE,
+  STOPPING_MICROPHONE,
+};
+
+class MicroWakeWord : public Component {
  public:
-  OnDeviceWakeWord() {}
-  OnDeviceWakeWord(float streaming_model_probability_cutoff, size_t streaming_model_sliding_window_mean_length);
+  void setup() override;
+  void loop() override;
+  float get_setup_priority() const override;
+
+  void start();
+  void stop();
+
+  bool is_running() const { return this->state_ != State::IDLE; }
 
   bool initialize_models();
 
@@ -56,14 +74,28 @@ class OnDeviceWakeWord {
    * @param ring_Buffer Ring buffer containing raw audio samples
    * @return True if the wake word is detected, false otherwise
    */
-  bool detect_wakeword(ringbuf_handle_t &ring_buffer);
+  bool detect_wakeword();
 
   void set_streaming_model_probability_cutoff(float streaming_model_probability_cutoff) {
     this->streaming_model_probability_cutoff_ = streaming_model_probability_cutoff;
   }
   void set_streaming_model_sliding_window_mean_length(size_t length);
 
+  void set_microphone(microphone::Microphone *microphone) { this->microphone_ = microphone; }
+
+  Trigger<std::string> *get_wake_word_detected_trigger() const { return this->wake_word_detected_trigger_; }
+
  protected:
+  void set_state_(State state);
+  int read_microphone_();
+
+  microphone::Microphone *microphone_{nullptr};
+  Trigger<std::string> *wake_word_detected_trigger_ = new Trigger<std::string>();
+  State state_{State::IDLE};
+
+  StreamBufferHandle_t ring_buffer_;
+  int16_t *input_buffer_;
+
   const tflite::Model *preprocessor_model_{nullptr};
   const tflite::Model *streaming_model_{nullptr};
   tflite::MicroInterpreter *streaming_interpreter_{nullptr};
@@ -95,14 +127,14 @@ class OnDeviceWakeWord {
   int16_t *preprocessor_stride_buffer_;
 
   /// @brief Returns true if there are enough audio samples in the buffer to generate another slice of features
-  bool slice_available_(ringbuf_handle_t &ring_buffer);
+  bool slice_available_();
 
   /** Shifts previous feature slices over by one and generates a new slice of features
    *
    * @param ring_buffer ring buffer containing raw audio samples
    * @return True if a new slice of features was generated, false otherwise
    */
-  bool update_features_(ringbuf_handle_t &ring_buffer);
+  bool update_features_();
 
   /** Generates features from audio samples
    *
@@ -128,7 +160,7 @@ class OnDeviceWakeWord {
    * @param audio_samples Pointer to an array that will store the strided audio samples
    * @return True if successful, false otherwise
    */
-  bool stride_audio_samples_(int16_t **audio_samples, ringbuf_handle_t &ring_buffer);
+  bool stride_audio_samples_(int16_t **audio_samples);
 
   /// @brief Returns true if successfully registered the preprocessor's TensorFlow operations
   bool register_preprocessor_ops_(tflite::MicroMutableOpResolver<18> &op_resolver);
@@ -136,5 +168,21 @@ class OnDeviceWakeWord {
   /// @brief Returns true if successfully registered the streaming model's TensorFlow operations
   bool register_streaming_ops_(tflite::MicroMutableOpResolver<12> &op_resolver);
 };
-}  // namespace voice_assistant
+
+template<typename... Ts> class StartAction : public Action<Ts...>, public Parented<MicroWakeWord> {
+ public:
+  void play(Ts... x) override { this->parent_->start(); }
+};
+
+template<typename... Ts> class StopAction : public Action<Ts...>, public Parented<MicroWakeWord> {
+ public:
+  void play(Ts... x) override { this->parent_->stop(); }
+};
+
+template<typename... Ts> class IsRunningCondition : public Condition<Ts...>, public Parented<MicroWakeWord> {
+ public:
+  bool check(Ts... x) override { return this->parent_->is_running(); }
+};
+
+}  // namespace micro_wake_word
 }  // namespace esphome
