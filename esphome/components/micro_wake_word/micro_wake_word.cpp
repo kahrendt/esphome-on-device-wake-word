@@ -5,7 +5,6 @@
 #include "esphome/core/log.h"
 
 #include "audio_preprocessor_int8_model_data.h"
-#include "model.h"
 
 #include <tensorflow/lite/core/c/common.h>
 #include <tensorflow/lite/micro/micro_interpreter.h>
@@ -205,7 +204,7 @@ bool MicroWakeWord::initialize_models() {
     return false;
   }
 
-  this->streaming_model_ = tflite::GetModel(streaming_model);
+  this->streaming_model_ = tflite::GetModel(this->model_start_);
   if (this->streaming_model_->version() != TFLITE_SCHEMA_VERSION) {
     ESP_LOGE(TAG, "Wake word's streaming model's schema is not supported");
     return false;
