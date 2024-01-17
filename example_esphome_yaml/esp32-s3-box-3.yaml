@@ -177,6 +177,10 @@ voice_assistant:
   on_tts_stream_end:
     - lambda: id(voice_assistant_phase) = ${voice_assist_idle_phase_id};
     - script.execute: draw_display
+    - wait_until:
+        not:
+          voice_assistant.is_running:
+    - micro_wake_word.start:
   on_error:
     - if:
         condition:
@@ -211,6 +215,8 @@ voice_assistant:
   on_client_disconnected:
     - lambda: id(voice_assistant_phase) = ${voice_assist_not_ready_phase_id};
     - script.execute: draw_display
+    - micro_wake_word.stop:
+    - voice_assistant.stop:
 
 micro_wake_word:
   on_wake_word_detected:
