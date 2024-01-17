@@ -68,12 +68,11 @@ psram:
 
 external_components:
   - source: github://pr#5230
-    # - source: /home/jesse/workspace/esphome/esphome2/esphome/components
     components: esp_adf
     refresh: 0s
-  - source: /home/jesse/workspace/esphome/esphome-on-device-wake-word/esphome/components
+  - source: github://kahrendt/esphome-on-device-wake-word
+    components: micro_wake_word
     refresh: 0s
-    components: [micro_wake_word]
 
 api:
   on_client_connected:
