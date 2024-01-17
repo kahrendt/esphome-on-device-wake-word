@@ -270,7 +270,7 @@ voice_assistant:
 micro_wake_word:
   on_wake_word_detected:
     - voice_assistant.start:
-  model: github://kahrendt/esphome-on-device-wake-word/trained_models/okay_nabu/stream_state_internal_quantized.tflite
+  model: github://kahrendt/esphome-on-device-wake-word/trained_models/hey_jarvis/stream_state_internal_quantized.tflite
 
 script:
   - id: draw_display
