@@ -176,10 +176,14 @@ voice_assistant:
     - lambda: id(voice_assistant_phase) = ${voice_assist_idle_phase_id};
     - script.execute: draw_display
   on_end:
-    - wait_until:
-        not:
-          voice_assistant.is_running:
-    - micro_wake_word.start:
+    - if:
+        condition:
+          switch.is_off: mute
+        then:
+          - wait_until:
+              not:
+                voice_assistant.is_running:
+          - micro_wake_word.start:
   on_error:
     - if:
         condition:
