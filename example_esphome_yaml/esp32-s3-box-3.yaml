@@ -176,6 +176,7 @@ voice_assistant:
   on_tts_stream_end:
     - lambda: id(voice_assistant_phase) = ${voice_assist_idle_phase_id};
     - script.execute: draw_display
+  on_end:
     - wait_until:
         not:
           voice_assistant.is_running:

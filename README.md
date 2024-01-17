@@ -21,12 +21,9 @@ external_components:
   - source: github://pr#5230
     components: esp_adf
     refresh: 0s
-  - source:
-      type: git
-      url: https://github.com/kahrendt/esphome-on-device-wake-word
-      ref: dev
+  - source: github://kahrendt/esphome-on-device-wake-word@dev
     refresh: 0s
-    components: [ voice_assistant ]  
+    components: [ micro_wake_word ]
 
 esp_adf:
   board: esp32s3boxlite
@@ -36,17 +33,24 @@ voice_assistant:
   microphone: box_mic
   speaker: box_speaker
   use_wake_word: false
-  use_local_wake_word: true
   noise_suppression_level: 2
   auto_gain: 31dBFS
   volume_multiplier: 2.0
-  vad_threshold: 3
   on_client_connected:
     - if:
         condition:
           switch.is_on: use_local_wake_word
         then:
-          - voice_assistant.start_continuous:
+          - micro_wake_word.start:
+  on_end:
+    - wait_until:
+        not:
+          voice_assistant.is_running:
+    - micro_wake_word.start:
+
+micro_wake_word:
+  on_wake_word_detected:
+    - voice_assistant.start:
 
 switch:
   - platform: template
@@ -56,12 +60,18 @@ switch:
     restore_mode: RESTORE_DEFAULT_ON
     entity_category: config
     on_turn_on:
-      - lambda: id(va).set_use_local_wake_word(true);
+      - if:
+          condition:
+            not:
+              or:
+                - voice_assistant.is_running:
+                - micro_wake_word.is_running:
+          then:
+            - micro_wake_word.start:
     on_turn_off:
-      - voice_assistant.stop
-      - lambda: id(va).set_use_local_wake_word(false);
+      - micro_wake_word.stop:
+      - voice_assistant.stop:
 ```
-
 
 ## Detection Process
 
