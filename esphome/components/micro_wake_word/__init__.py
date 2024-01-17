@@ -1,15 +1,36 @@
+import hashlib
+from pathlib import Path
+
 import esphome.config_validation as cv
 import esphome.codegen as cg
 
+from esphome.core import CORE, HexInt
+
 from esphome.components import esp32, microphone
-from esphome import automation
+from esphome import automation, git
 from esphome.automation import register_action, register_condition
 
 
-from esphome.const import CONF_ID, CONF_MICROPHONE
+from esphome.const import (
+    CONF_ID,
+    CONF_MICROPHONE,
+    CONF_MODEL,
+    CONF_URL,
+    CONF_FILE,
+    CONF_PATH,
+    CONF_REF,
+    CONF_REFRESH,
+    CONF_TYPE,
+    CONF_USERNAME,
+    CONF_PASSWORD,
+    CONF_RAW_DATA_ID,
+    TYPE_GIT,
+    TYPE_LOCAL,
+)
 
 CODEOWNERS = ["@kahrendt", "@jesserockz"]
 DEPENDENCIES = ["microphone"]
+DOMAIN = "micro_wake_word"
 
 CONF_STREAMING_MODEL_PROBABILITY_CUTOFF = "streaming_model_probability_cutoff"
 CONF_STREAMING_MODEL_SLIDING_WINDOW_MEAN_LENGTH = (
@@ -29,6 +50,90 @@ IsRunningCondition = micro_wake_word_ns.class_(
     "IsRunningCondition", automation.Condition
 )
 
+
+def _validate_tflite_filename(value):
+    value = cv.string(value)
+    if not value.endswith(".tflite"):
+        raise cv.Invalid("Filename must end with .tflite")
+    return value
+
+
+def _process_git_source(config):
+    repo_dir, _ = git.clone_or_update(
+        url=config[CONF_URL],
+        ref=config.get(CONF_REF),
+        refresh=config[CONF_REFRESH],
+        domain=DOMAIN,
+        username=config.get(CONF_USERNAME),
+        password=config.get(CONF_PASSWORD),
+    )
+
+    if not (repo_dir / config[CONF_FILE]).exists():
+        raise cv.Invalid("File does not exist in repository")
+
+    return config
+
+
+CV_GIT_SCHEMA = cv.GIT_SCHEMA
+if isinstance(CV_GIT_SCHEMA, dict):
+    CV_GIT_SCHEMA = cv.Schema(CV_GIT_SCHEMA)
+
+GIT_SCHEMA = cv.All(
+    CV_GIT_SCHEMA.extend(
+        {
+            cv.Required(CONF_FILE): _validate_tflite_filename,
+            cv.Optional(CONF_REFRESH, default="1d"): cv.All(
+                cv.string, cv.source_refresh
+            ),
+        }
+    ),
+    _process_git_source,
+)
+
+LOCAL_SCHEMA = cv.Schema(
+    {
+        cv.Required(CONF_PATH): cv.file_,
+    }
+)
+
+
+def _validate_source_shorthand(value):
+    if not isinstance(value, str):
+        raise cv.Invalid("Shorthand only for strings")
+
+    try:  # Test for local path
+        return MODEL_SOURCE_SCHEMA({CONF_TYPE: TYPE_LOCAL, CONF_PATH: value})
+    except cv.Invalid:
+        pass
+
+    git_file = git.GitFile.from_shorthand(value)
+
+    conf = {
+        CONF_TYPE: TYPE_GIT,
+        CONF_URL: git_file.git_url,
+        CONF_FILE: git_file.filename,
+    }
+    if git_file.ref:
+        conf[CONF_REF] = git_file.ref
+
+    try:
+        return MODEL_SOURCE_SCHEMA(conf)
+    except cv.Invalid as e:
+        raise cv.Invalid(
+            f"Could not find file '{git_file.filename}' in the repository. Please make sure it exists."
+        ) from e
+
+
+MODEL_SOURCE_SCHEMA = cv.Any(
+    _validate_source_shorthand,
+    cv.typed_schema(
+        {
+            TYPE_GIT: GIT_SCHEMA,
+            TYPE_LOCAL: LOCAL_SCHEMA,
+        }
+    ),
+)
+
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(MicroWakeWord),
@@ -40,6 +145,8 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_ON_WAKE_WORD_DETECTED): automation.validate_automation(
             single=True
         ),
+        cv.Optional(CONF_MODEL): MODEL_SOURCE_SCHEMA,
+        cv.GenerateID(CONF_RAW_DATA_ID): cv.declare_id(cg.uint8),
     }
 ).extend(cv.COMPONENT_SCHEMA)
 
@@ -85,6 +192,26 @@ async def to_code(config):
     cg.add_build_flag("-DTF_LITE_STATIC_MEMORY")
     cg.add_build_flag("-DTF_LITE_DISABLE_X86_NEON")
     cg.add_build_flag("-DESP_NN")
+
+    if model_config := config.get(CONF_MODEL):
+        data = []
+        if model_config[CONF_TYPE] == TYPE_GIT:
+            # compute path to model file
+            key = f"{model_config[CONF_URL]}@{model_config.get(CONF_REF)}"
+            base_dir = Path(CORE.data_dir) / DOMAIN
+            h = hashlib.new("sha256")
+            h.update(key.encode())
+            file: Path = base_dir / h.hexdigest()[:8] / model_config[CONF_FILE]
+            # convert file to raw bytes array
+            data = file.read_bytes()
+
+        elif model_config[CONF_TYPE] == TYPE_LOCAL:
+            with open(model_config[CONF_PATH], "rb") as f:
+                data = f.read()
+
+        rhs = [HexInt(x) for x in data]
+        prog_arr = cg.progmem_array(config[CONF_RAW_DATA_ID], rhs)
+        cg.add(var.set_model_start(prog_arr))
 
 
 MICRO_WAKE_WORD_ACTION_SCHEMA = cv.Schema({cv.GenerateID(): cv.use_id(MicroWakeWord)})
