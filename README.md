@@ -1,77 +1,17 @@
 # On Device Wake Word Detection for ESPHome's Voice Assistant Component
+This component implements wake word detection on the ESPHome device itself. It currently implements "Hey Jarvis" as the wake word, but any custom word/phrase is possible after training a new model. The ``micro_wake_word`` component starts the assist pipeline immediately after detecting the wake word without using Wyoming-openWakeWord.
 
-This component implements wake word detection on the ESPHome device itself. It currently implements "Hey Jarvis" as the wake word, but any custom word/phrase is possible. The component starts the assist pipeline immediately after detecting the wake word without using Wyoming-openWakeWord.
-
-It works well. The performance metrics are comparable to openWakeWord's and will be improved further with more sources for negative training data. Using the [wake-word-benchmark framework from Picovoice](https://github.com/Picovoice/wake-word-benchmark), the model currently has a false accept per hour rate of 0.204 and a false reject rate of 0.06. The detection latency is extremely low, often faster than an ESP32 device using the openWakeWord pipeline.
+It works well with comparable performance to openWakeWord. The detection latency is extremely low, nearly always faster than an ESP32 device using the openWakeWord pipeline.
 
 Wake word detection is done entirely with [TensorFlow Lite Micro](https://github.com/espressif/esp-tflite-micro/). Wake word models are trained without using [Espressif's proprietary Skainet](https://github.com/espressif/esp-skainet) and can be customized without samples from different speakers. Sample preparation, generation, and augmentation heavily use code from [openWakeWord](https://github.com/dscripka/openWakeWord).
 
-I have tested it only on an ESP32-S3 Box Lite, though any S3 device supporting ESP-ADF should work. It requires external PSRAM and the [ESP-ADF component](https://github.com/esphome/esphome/pull/5230).
+The target devices are ESP32-S3 based with external PSRAM. It may run on a regular ESP32 but may not perform as well.
+
+**It is currently not trivial to train a new model. I am developing a custom training framework to make the process much easier!**
 
 ## YAML Configuration
 
-The ``example_esphome_yaml`` folder has a full example for an S3 Box Lite which only requires configuring the WiFi settings.
-
-Here is a bare-bones example that implements the ``voice_assistant`` component as well as a switch to toggle the on-device wake word detection. It also requires an appropriate ``esp_adf`` component configuration.
-
-Please **remove ``improv_serial`` and ``esp32_improv`` from your configuration!** It seems to slow down the device too much so that audio samples are dropped. This results in a much higher frequency of false rejections.
-
-```
-external_components:
-  - source: github://pr#5230
-    components: esp_adf
-    refresh: 0s
-  - source: github://kahrendt/esphome-on-device-wake-word@dev
-    refresh: 0s
-    components: [ micro_wake_word ]
-
-esp_adf:
-  board: esp32s3boxlite
-
-voice_assistant:
-  id: va
-  microphone: box_mic
-  speaker: box_speaker
-  use_wake_word: false
-  noise_suppression_level: 2
-  auto_gain: 31dBFS
-  volume_multiplier: 2.0
-  on_client_connected:
-    - if:
-        condition:
-          switch.is_on: use_local_wake_word
-        then:
-          - micro_wake_word.start:
-  on_end:
-    - wait_until:
-        not:
-          voice_assistant.is_running:
-    - micro_wake_word.start:
-
-micro_wake_word:
-  on_wake_word_detected:
-    - voice_assistant.start:
-
-switch:
-  - platform: template
-    name: Use on device wake word
-    id: use_local_wake_word
-    optimistic: true
-    restore_mode: RESTORE_DEFAULT_ON
-    entity_category: config
-    on_turn_on:
-      - if:
-          condition:
-            not:
-              or:
-                - voice_assistant.is_running:
-                - micro_wake_word.is_running:
-          then:
-            - micro_wake_word.start:
-    on_turn_off:
-      - micro_wake_word.stop:
-      - voice_assistant.stop:
-```
+See the [example YAML files](https://github.com/kahrendt/esphome-on-device-wake-word/tree/dev/example_esphome_yaml) for various S3 box models.
 
 ## Detection Process
 
@@ -83,80 +23,22 @@ The streaming model performs inferences every 20 ms on the newest audio stride. 
 
 ## Next Steps and Improvement Plans
 
-The model's latency is already extremely low, and the performance metrics are good. However, we can further improve the false rejection and false acceptance rates with better training.
-
-  - Use a larger negative dataset based on more sources.
-  - Add more custom negative phrases to the dataset close to the wake word, e.g., "Hey Jacky."
-  - The model is prone to overfitting. Add test methods to stop training early once particular metrics are met.
-
-There are several improvements needed for the ESPHome component.
-
-  - Switch from using ESP-ADF's ring buffer to a generic FreeRTOS approach.
-  - The current implementation allocates a large amount of memory to enable experimentation with various models. We can drastically reduce the memory allocated with no performance penalty.
-  - Make it easier to switch between different wake word models/phrases.
-
-There are several remaining general improvements.
-
-  - Write an end-to-end Jupyter/Google Colab notebook for sample generation, augmentation, and training that generates new wake word models.
-  - Release scripts that show the test for false-reject and false-accept rates for easy comparison to other wake word detection engines.
-  - Add common wake words like "Alexa" and "Okay Nabu."
-  - The model and training process allows multiple distinct wake words simultaneously. Experiment to see if this results in a noticeable reduction in accuracy.  
-  - Test the code on an ESP32, though it may run too slow since the [ESP-NN optimizations](https://github.com/espressif/esp-nn) perform better on an S3.
+  - Make the model training process more straightforward.
+  - Generate and provide more pre-trained models.
+  - Make it easy to switch between models in the YAML config.
 
 ## Model Training Process
 
-We generate positive and negative samples using [openWakeWord](https://github.com/dscripka/openWakeWord), which relies on [Piper sample generator](https://github.com/rhasspy/piper-sample-generator). We also use openWakeWord's data tools to augment the positive and negative samples. Then, we train the two models using code from [Google Research](https://github.com/google-research/google-research/tree/master/kws_streaming). The streaming model is an inception neural network converted for streaming.
+We generate positive and negative samples using [openWakeWord](https://github.com/dscripka/openWakeWord), which relies on [Piper sample generator](https://github.com/rhasspy/piper-sample-generator). We also use openWakeWord's data tools to augment the positive and negative sample. In addition, we add other sources of negative data such as music or prerecorded background noise. Then, we train the two models using code from [Google Research](https://github.com/google-research/google-research/tree/master/kws_streaming). The streaming model is an inception neural network converted for streaming.
 
-The models' parameters are set via
+## Acknowledgements
 
-```
-TRAIN_DIR = 'trained_models/inception'
-SAMPLE_RATE = 16000
-CLIP_DURATION_MS = 1490
-FEATURE_BIN_COUNT = 40
-BACKGROUND_FREQUENCY = 0
-BACKGROUND_VOLUME_RANGE = 0
-TIME_SHIFT_MS = 0.0
-WINDOW_STRIDE = 20
-WINDOW_SIZE_MS = 30
-PREPROCESS = 'none'
-WANTED_WORDS = "wakeword,unknown"
-DATASET_DIR =  'data_training'
-```
+I am very thankful for many people's support to help improve this! Thank you, in particular, to the following individuals and groups for providing feedback, collaboration, and developmental support:
 
-We train the streaming model using the follow (note it requires several modification's to the default code that are included in the ``kws_streaming`` folder.)
-
-```
-!python -m kws_streaming.train.model_train_eval \
---data_url='' \
---data_dir={DATASET_DIR} \
---train_dir={TRAIN_DIR} \
---split_data 0 \
---mel_upper_edge_hertz 7500.0 \
---mel_lower_edge_hertz 125.0 \
---how_many_training_steps 10000 \
---learning_rate 0.001 \
---window_size_ms={WINDOW_SIZE_MS} \
---window_stride_ms={WINDOW_STRIDE} \
---clip_duration_ms={CLIP_DURATION_MS} \
---eval_step_interval=500 \
---mel_num_bins={FEATURE_BIN_COUNT} \
---dct_num_features={FEATURE_BIN_COUNT} \
---preprocess={PREPROCESS} \
---alsologtostderr \
---train 1 \
---wanted_words={WANTED_WORDS} \
---pick_deterministically 0 \
---return_softmax 1 \
---restore_checkpoint 0 \
-inception \
---cnn1_filters '32' \
---cnn1_kernel_sizes '5' \
---cnn1_strides '1' \
---cnn2_filters1 '16,16,16' \
---cnn2_filters2 '32,64,70' \
---cnn2_kernel_sizes '3,5,5' \
---cnn2_strides '1,1,1' \
---dropout 0.0 \
---bn_scale 0
-```
+  - [balloob](https://github.com/balloob)
+  - [dscripka](https://github.com/dscripka)
+  - [jesserockz](https://github.com/jesserockz)
+  - [kbx81](https://github.com/kbx81)
+  - [synesthesiam](https://github.com/synesthesiam)
+  - [ESPHome](https://github.com/esphome)
+  - [Nabu Casa](https://github.com/NabuCasa)
