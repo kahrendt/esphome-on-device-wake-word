@@ -1,5 +1,8 @@
+import logging
+
 import hashlib
 from pathlib import Path
+import requests
 
 import esphome.config_validation as cv
 import esphome.codegen as cg
@@ -7,11 +10,12 @@ import esphome.codegen as cg
 from esphome.core import CORE, HexInt
 
 from esphome.components import esp32, microphone
-from esphome import automation, git
+from esphome import automation, git, external_files
 from esphome.automation import register_action, register_condition
 
 
 from esphome.const import (
+    __version__,
     CONF_ID,
     CONF_MICROPHONE,
     CONF_MODEL,
@@ -28,6 +32,9 @@ from esphome.const import (
     TYPE_LOCAL,
 )
 
+
+_LOGGER = logging.getLogger(__name__)
+
 CODEOWNERS = ["@kahrendt", "@jesserockz"]
 DEPENDENCIES = ["microphone"]
 DOMAIN = "micro_wake_word"
@@ -38,6 +45,7 @@ CONF_STREAMING_MODEL_SLIDING_WINDOW_MEAN_LENGTH = (
 )
 CONF_ON_WAKE_WORD_DETECTED = "on_wake_word_detected"
 
+TYPE_HTTP = "http"
 
 micro_wake_word_ns = cg.esphome_ns.namespace("micro_wake_word")
 
@@ -90,19 +98,91 @@ GIT_SCHEMA = cv.All(
     _process_git_source,
 )
 
+
+def _compute_local_file_path(config: dict) -> Path:
+    url = config[CONF_URL]
+    h = hashlib.new("sha256")
+    h.update(url.encode())
+    key = h.hexdigest()[:8]
+    base_dir = external_files.compute_local_file_dir(DOMAIN)
+    return base_dir / key
+
+
+def _process_http_source(config):
+    url = config[CONF_URL]
+    path = _compute_local_file_path(config)
+
+    if not external_files.has_remote_file_changed(url, path):
+        _LOGGER.debug("Remote file has not changed, skipping download")
+        return config
+
+    _LOGGER.debug(
+        "Remote file has changed, downloading from %s to %s",
+        url,
+        path,
+    )
+
+    try:
+        req = requests.get(
+            url,
+            timeout=external_files.NETWORK_TIMEOUT,
+            headers={"User-agent": f"ESPHome/{__version__} (https://esphome.io)"},
+        )
+        req.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        raise cv.Invalid(f"Could not download file from {url}: {e}") from e
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(req.content)
+
+    return config
+
+
+HTTP_SCHEMA = cv.All(
+    {
+        cv.Required(CONF_URL): cv.url,
+    },
+    _process_http_source,
+)
+
 LOCAL_SCHEMA = cv.Schema(
     {
-        cv.Required(CONF_PATH): cv.file_,
+        cv.Required(CONF_PATH): cv.All(_validate_tflite_filename, cv.file_),
     }
 )
+
+
+def _validate_source_model_name(value):
+    if not isinstance(value, str):
+        raise cv.Invalid("Model name must be a string")
+
+    if value.endswith(".tflite"):
+        raise cv.Invalid("Model name must not end with .tflite")
+
+    return MODEL_SOURCE_SCHEMA(
+        {
+            CONF_TYPE: TYPE_HTTP,
+            CONF_URL: f"https://github.com/esphome/micro-wake-word-models/raw/main/models/{value}.tflite",
+        }
+    )
 
 
 def _validate_source_shorthand(value):
     if not isinstance(value, str):
         raise cv.Invalid("Shorthand only for strings")
 
+    try:  # Test for model name
+        return _validate_source_model_name(value)
+    except cv.Invalid:
+        pass
+
     try:  # Test for local path
         return MODEL_SOURCE_SCHEMA({CONF_TYPE: TYPE_LOCAL, CONF_PATH: value})
+    except cv.Invalid:
+        pass
+
+    try:  # Test for http url
+        return MODEL_SOURCE_SCHEMA({CONF_TYPE: TYPE_HTTP, CONF_URL: value})
     except cv.Invalid:
         pass
 
@@ -130,8 +210,10 @@ MODEL_SOURCE_SCHEMA = cv.Any(
         {
             TYPE_GIT: GIT_SCHEMA,
             TYPE_LOCAL: LOCAL_SCHEMA,
+            TYPE_HTTP: HTTP_SCHEMA,
         }
     ),
+    msg="Not a valid model name, local path, http(s) url, or github shorthand",
 )
 
 CONFIG_SCHEMA = cv.Schema(
