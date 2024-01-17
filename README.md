@@ -13,6 +13,11 @@ The target devices are ESP32-S3 based with external PSRAM. It may run on a regul
 
 See the [example YAML files](https://github.com/kahrendt/esphome-on-device-wake-word/tree/dev/example_esphome_yaml) for various S3 box models.
 
+## Benchmarks
+
+The following graph depicts the false-accept/false-reject rate for the "hey jarvis" model compared to the equivalent openWakeWord model.
+![FPR/FRR curve for "hey jarvis" pre-trained model](benchmarking/oww_comparison.jpg)
+
 ## Detection Process
 
 The component detects the wake word in two stages. Raw audio data is processed into 40 features every 20 ms. Several of these features construct a spectrogram. A streaming inference model only uses the newest slice of feature data as input to detect the wake word. If the model consistently predicts the wake word over multiple windows, then the component starts the assist pipeline.
