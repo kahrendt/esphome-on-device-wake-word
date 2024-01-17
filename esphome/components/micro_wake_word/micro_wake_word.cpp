@@ -57,17 +57,16 @@ void MicroWakeWord::setup() {
   }
 
   ExternalRAMAllocator<int16_t> allocator(ExternalRAMAllocator<int16_t>::ALLOW_FAILURE);
-  this->input_buffer_ = allocator.allocate(INPUT_BUFFER_SIZE);
+  this->input_buffer_ = allocator.allocate(NEW_SAMPLES_TO_GET);
   if (this->input_buffer_ == nullptr) {
     ESP_LOGW(TAG, "Could not allocate input buffer");
     this->mark_failed();
     return;
   }
 
-  this->ring_buffer_ = xStreamBufferCreate(BUFFER_SIZE * sizeof(int16_t), 0);
+  this->ring_buffer_ = RingBuffer::create(BUFFER_SIZE * sizeof(int16_t));
   if (this->ring_buffer_ == nullptr) {
-    ESP_LOGE(TAG, "Failed to create ring buffer");
-    ESP_LOGE(TAG, "Free memory: %d", esp_get_free_heap_size());
+    ESP_LOGW(TAG, "Could not allocate ring buffer");
     this->mark_failed();
     return;
   }
@@ -76,18 +75,12 @@ void MicroWakeWord::setup() {
 }
 
 int MicroWakeWord::read_microphone_() {
-  size_t bytes_read = this->microphone_->read(this->input_buffer_, INPUT_BUFFER_SIZE * sizeof(int16_t));
+  size_t bytes_read = this->microphone_->read(this->input_buffer_, NEW_SAMPLES_TO_GET * sizeof(int16_t));
   if (bytes_read == 0) {
-    ESP_LOGD(TAG, "No audio data read from microphone");
     return 0;
   }
 
-  int available = xStreamBufferSpacesAvailable(this->ring_buffer_);
-  if (available < bytes_read) {
-    int16_t discard[bytes_read - available];
-    xStreamBufferReceive(this->ring_buffer_, discard, bytes_read - available, 0);
-  }
-  size_t bytes_written = xStreamBufferSend(this->ring_buffer_, (void *) this->input_buffer_, bytes_read, portMAX_DELAY);
+  size_t bytes_written = this->ring_buffer_->write((void *) this->input_buffer_, bytes_read);
   if (bytes_written != bytes_read) {
     ESP_LOGW(TAG, "Failed to write some data to ring buffer (written=%d, expected=%d)", bytes_written, bytes_read);
   }
@@ -340,10 +333,10 @@ void MicroWakeWord::set_streaming_model_sliding_window_mean_length(size_t length
 }
 
 bool MicroWakeWord::slice_available_() {
-  // uint8_t slices_to_process = xStreamBufferBytesAvailable(this->ring_buffer_) / (NEW_SAMPLES_TO_GET *
-  // sizeof(int16_t));
+  size_t available = this->ring_buffer_->available();
+  // ESP_LOGD(TAG, "slices available: %u", available / (NEW_SAMPLES_TO_GET * sizeof(int16_t)));
 
-  if (xStreamBufferBytesAvailable(this->ring_buffer_) > NEW_SAMPLES_TO_GET * sizeof(int16_t)) {
+  if (available > NEW_SAMPLES_TO_GET * sizeof(int16_t)) {
     return true;
   }
   return false;
@@ -355,18 +348,17 @@ bool MicroWakeWord::stride_audio_samples_(int16_t **audio_samples) {
   memcpy((void *) (this->preprocessor_audio_buffer_), (void *) (this->preprocessor_stride_buffer_),
          HISTORY_SAMPLES_TO_KEEP * sizeof(int16_t));
 
-  if (xStreamBufferBytesAvailable(this->ring_buffer_) < NEW_SAMPLES_TO_GET * sizeof(int16_t)) {
+  if (this->ring_buffer_->available() < NEW_SAMPLES_TO_GET * sizeof(int16_t)) {
     ESP_LOGD(TAG, "Audio Buffer not full enough");
     return false;
   }
 
   // Copy 640 bytes (320 samples over 20 ms) from the ring buffer
   // The first 320 bytes (160 samples over 10 ms) will be from history
-  int bytes_read =
-      xStreamBufferReceive(this->ring_buffer_, ((void *) (this->preprocessor_audio_buffer_ + HISTORY_SAMPLES_TO_KEEP)),
-                           NEW_SAMPLES_TO_GET * sizeof(int16_t), pdMS_TO_TICKS(200));
+  size_t bytes_read = this->ring_buffer_->read((void *) (this->preprocessor_audio_buffer_ + HISTORY_SAMPLES_TO_KEEP),
+                                               NEW_SAMPLES_TO_GET * sizeof(int16_t), pdMS_TO_TICKS(200));
 
-  if (bytes_read < 0) {
+  if (bytes_read == 0) {
     ESP_LOGE(TAG, "Could not read data from Ring Buffer");
   } else if (bytes_read < NEW_SAMPLES_TO_GET * sizeof(int16_t)) {
     ESP_LOGD(TAG, "Partial Read of Data by Model");

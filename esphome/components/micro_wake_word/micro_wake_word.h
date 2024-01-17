@@ -2,10 +2,9 @@
 
 #include "esphome/core/automation.h"
 #include "esphome/core/component.h"
+#include "esphome/core/ring_buffer.h"
 
 #include "esphome/components/microphone/microphone.h"
-
-#include <freertos/stream_buffer.h>
 
 #include "tensorflow/lite/core/c/common.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
@@ -94,7 +93,8 @@ class MicroWakeWord : public Component {
   State state_{State::IDLE};
   HighFrequencyLoopRequester high_freq_;
 
-  StreamBufferHandle_t ring_buffer_;
+  std::unique_ptr<RingBuffer> ring_buffer_;
+
   int16_t *input_buffer_;
 
   const tflite::Model *preprocessor_model_{nullptr};
@@ -126,6 +126,7 @@ class MicroWakeWord : public Component {
   // Stores audio fed into feature generator preprocessor
   int16_t *preprocessor_audio_buffer_;
   int16_t *preprocessor_stride_buffer_;
+
   bool detected_{false};
 
   /// @brief Returns true if there are enough audio samples in the buffer to generate another slice of features
