@@ -17,6 +17,7 @@ See the [example YAML files](https://github.com/kahrendt/esphome-on-device-wake-
 
 The following graph depicts the false-accept/false-reject rate for the "hey jarvis" model compared to the equivalent openWakeWord model.
 ![FPR/FRR curve for "hey jarvis" pre-trained model](benchmarking/oww_comparison.jpg)
+Graph Credit: [dscripka](https://github.com/dscripka)
 
 ## Detection Process
 
