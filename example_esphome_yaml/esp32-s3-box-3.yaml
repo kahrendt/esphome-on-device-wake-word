@@ -163,7 +163,6 @@ voice_assistant:
   noise_suppression_level: 2
   auto_gain: 31dBFS
   volume_multiplier: 2.0
-  # vad_threshold: 3
   on_listening:
     - lambda: id(voice_assistant_phase) = ${voice_assist_listening_phase_id};
     - script.execute: draw_display
@@ -204,7 +203,6 @@ voice_assistant:
         then:
           - wait_until:
               not: ble.enabled
-          # - voice_assistant.start_continuous:
           - delay: 1s
           - micro_wake_word.start:
           - lambda: id(voice_assistant_phase) = ${voice_assist_idle_phase_id};
