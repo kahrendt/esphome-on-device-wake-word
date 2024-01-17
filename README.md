@@ -15,9 +15,14 @@ See the [example YAML files](https://github.com/kahrendt/esphome-on-device-wake-
 
 ## Benchmarks
 
-The following graph depicts the false-accept/false-reject rate for the "hey jarvis" model compared to the equivalent openWakeWord model.
+Benchmarking and comparing wake word models is challenging. It is hard to account for all the different operating environments. [Picovoice](https://github.com/Picovoice/wake-word-benchmark) has provided one benchmark for at least one point of comparison.
+
+The following graph depicts the false-accept/false-reject rate for the "Hey Jarvis" model compared to the equivalent openWakeWord model.
 ![FPR/FRR curve for "hey jarvis" pre-trained model](benchmarking/oww_comparison.jpg)
+
 Graph Credit: [dscripka](https://github.com/dscripka)
+
+For a more rigorous false acceptance metric, we tested the "Hey Jarvis" on the [Dinner Party Corpus](https://www.amazon.science/publications/dipco-dinner-party-corpus) dataset. The component's default configuration values result in a 0.187 false accept rate per hour.
 
 ## Detection Process
 
@@ -25,7 +30,7 @@ The component detects the wake word in two stages. Raw audio data is processed i
 
 The first stage processes the raw monochannel audio data at a sample rate of 16 kHz via the [micro_speech preprocessor](https://github.com/tensorflow/tflite-micro/tree/main/tensorflow/lite/micro/examples/micro_speech). The preprocessor generates 40 features over 30 ms (the window duration) of audio data. The preprocessor generates these features every 20 ms (the stride duration), so the first 10 ms of audio data is part of the previous window. This process is similar to calculating a Mel spectrogram for the audio data, but it is lightweight for devices with limited processing power. See the linked TFLite Micro example for full details on how the audio is processed.
 
-The streaming model performs inferences every 20 ms on the newest audio stride. The model is an [inceptional neural network](https://towardsdatascience.com/a-simple-guide-to-the-versions-of-the-inception-network-7fc52b863202?gi=6bc760f44aef) converted for streaming. It executes an inference in under 10 ms on an ESP32 S3, much faster than the 20 ms stride length. Streaming and training the model uses modified open-sourced code from [Google Research](https://github.com/google-research/google-research/tree/master/kws_streaming) found in the paper [Streaming Keyword Spotting on Mobile Devices](https://arxiv.org/pdf/2005.06720.pdf) by Rykabov, Kononenko, Subrahmanya, Visontai, and Laurenzo.
+The streaming model performs inferences every 20 ms on the newest audio stride. The model is based on an [inception neural network](https://towardsdatascience.com/a-simple-guide-to-the-versions-of-the-inception-network-7fc52b863202?gi=6bc760f44aef) converted for streaming. It executes an inference in under 10 ms on an ESP32-S3, much faster than the 20 ms stride length. Streaming and training the model uses modified open-sourced code from [Google Research](https://github.com/google-research/google-research/tree/master/kws_streaming) found in the paper [Streaming Keyword Spotting on Mobile Devices](https://arxiv.org/pdf/2005.06720.pdf) by Rykabov, Kononenko, Subrahmanya, Visontai, and Laurenzo.
 
 ## Next Steps and Improvement Plans
 
