@@ -102,6 +102,7 @@ void MicroWakeWord::loop() {
       ESP_LOGD(TAG, "Starting Microphone");
       this->microphone_->start();
       this->set_state_(State::STARTING_MICROPHONE);
+      this->high_freq_.start();
       break;
     case State::STARTING_MICROPHONE:
       if (this->microphone_->is_running()) {
@@ -112,7 +113,7 @@ void MicroWakeWord::loop() {
       this->read_microphone_();
       if (this->detect_wakeword()) {
         ESP_LOGD(TAG, "Wake Word Detected");
-        this->wake_word_detected_trigger_->trigger("");
+        this->detected_ = true;
         this->set_state_(State::STOP_MICROPHONE);
       }
       break;
@@ -120,10 +121,15 @@ void MicroWakeWord::loop() {
       ESP_LOGD(TAG, "Stopping Microphone");
       this->microphone_->stop();
       this->set_state_(State::STOPPING_MICROPHONE);
+      this->high_freq_.stop();
       break;
     case State::STOPPING_MICROPHONE:
-      if (!this->microphone_->is_running()) {
+      if (this->microphone_->is_stopped()) {
         this->set_state_(State::IDLE);
+        if (this->detected_) {
+          this->detected_ = false;
+          this->wake_word_detected_trigger_->trigger("");
+        }
       }
       break;
   }

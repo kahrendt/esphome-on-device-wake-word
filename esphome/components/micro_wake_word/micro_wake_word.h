@@ -92,6 +92,7 @@ class MicroWakeWord : public Component {
   microphone::Microphone *microphone_{nullptr};
   Trigger<std::string> *wake_word_detected_trigger_ = new Trigger<std::string>();
   State state_{State::IDLE};
+  HighFrequencyLoopRequester high_freq_;
 
   StreamBufferHandle_t ring_buffer_;
   int16_t *input_buffer_;
@@ -125,6 +126,7 @@ class MicroWakeWord : public Component {
   // Stores audio fed into feature generator preprocessor
   int16_t *preprocessor_audio_buffer_;
   int16_t *preprocessor_stride_buffer_;
+  bool detected_{false};
 
   /// @brief Returns true if there are enough audio samples in the buffer to generate another slice of features
   bool slice_available_();
