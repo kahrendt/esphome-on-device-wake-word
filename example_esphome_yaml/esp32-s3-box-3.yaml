@@ -33,7 +33,7 @@ esphome:
   project:
     name: esphome.voice-assistant
     version: "1.0"
-  min_version: 2023.11.5
+  min_version: 2023.12.7
   on_boot:
     priority: 600
     then:
