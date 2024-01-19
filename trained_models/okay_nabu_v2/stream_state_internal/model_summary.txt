@@ -1,0 +1,226 @@
+Model: "model_2"
+__________________________________________________________________________________________________
+ Layer (type)                Output Shape                 Param #   Connected to                  
+==================================================================================================
+ input_audio (InputLayer)    [(1, 1, 40)]                 0         []                            
+                                                                                                  
+ tf.expand_dims_2 (TFOpLamb  (1, 1, 1, 40)                0         ['input_audio[0][0]']         
+ da)                                                                                              
+                                                                                                  
+ stream_22 (Stream)          (1, 1, 1, 32)                6600      ['tf.expand_dims_2[0][0]']    
+                                                                                                  
+ batch_normalization_44 (Ba  (1, 1, 1, 32)                96        ['stream_22[0][0]']           
+ tchNormalization)                                                                                
+                                                                                                  
+ activation_44 (Activation)  (1, 1, 1, 32)                0         ['batch_normalization_44[0][0]
+                                                                    ']                            
+                                                                                                  
+ conv2d_48 (Conv2D)          (1, 1, 1, 16)                512       ['activation_44[0][0]']       
+                                                                                                  
+ batch_normalization_48 (Ba  (1, 1, 1, 16)                48        ['conv2d_48[0][0]']           
+ tchNormalization)                                                                                
+                                                                                                  
+ conv2d_46 (Conv2D)          (1, 1, 1, 16)                512       ['activation_44[0][0]']       
+                                                                                                  
+ activation_48 (Activation)  (1, 1, 1, 16)                0         ['batch_normalization_48[0][0]
+                                                                    ']                            
+                                                                                                  
+ batch_normalization_46 (Ba  (1, 1, 1, 16)                48        ['conv2d_46[0][0]']           
+ tchNormalization)                                                                                
+                                                                                                  
+ stream_24 (Stream)          (1, 1, 1, 16)                800       ['activation_48[0][0]']       
+                                                                                                  
+ activation_46 (Activation)  (1, 1, 1, 16)                0         ['batch_normalization_46[0][0]
+                                                                    ']                            
+                                                                                                  
+ batch_normalization_49 (Ba  (1, 1, 1, 16)                48        ['stream_24[0][0]']           
+ tchNormalization)                                                                                
+                                                                                                  
+ conv2d_45 (Conv2D)          (1, 1, 1, 16)                512       ['activation_44[0][0]']       
+                                                                                                  
+ stream_23 (Stream)          (1, 1, 1, 16)                800       ['activation_46[0][0]']       
+                                                                                                  
+ activation_49 (Activation)  (1, 1, 1, 16)                0         ['batch_normalization_49[0][0]
+                                                                    ']                            
+                                                                                                  
+ batch_normalization_45 (Ba  (1, 1, 1, 16)                48        ['conv2d_45[0][0]']           
+ tchNormalization)                                                                                
+                                                                                                  
+ batch_normalization_47 (Ba  (1, 1, 1, 16)                48        ['stream_23[0][0]']           
+ tchNormalization)                                                                                
+                                                                                                  
+ stream_25 (Stream)          (1, 1, 1, 16)                800       ['activation_49[0][0]']       
+                                                                                                  
+ activation_45 (Activation)  (1, 1, 1, 16)                0         ['batch_normalization_45[0][0]
+                                                                    ']                            
+                                                                                                  
+ activation_47 (Activation)  (1, 1, 1, 16)                0         ['batch_normalization_47[0][0]
+                                                                    ']                            
+                                                                                                  
+ batch_normalization_50 (Ba  (1, 1, 1, 16)                48        ['stream_25[0][0]']           
+ tchNormalization)                                                                                
+                                                                                                  
+ strided_drop_12 (StridedDr  (1, 1, 1, 16)                0         ['activation_45[0][0]']       
+ op)                                                                                              
+                                                                                                  
+ strided_drop_13 (StridedDr  (1, 1, 1, 16)                0         ['activation_47[0][0]']       
+ op)                                                                                              
+                                                                                                  
+ activation_50 (Activation)  (1, 1, 1, 16)                0         ['batch_normalization_50[0][0]
+                                                                    ']                            
+                                                                                                  
+ concatenate_6 (Concatenate  (1, 1, 1, 48)                0         ['strided_drop_12[0][0]',     
+ )                                                                   'strided_drop_13[0][0]',     
+                                                                     'activation_50[0][0]']       
+                                                                                                  
+ conv2d_51 (Conv2D)          (1, 1, 1, 32)                1536      ['concatenate_6[0][0]']       
+                                                                                                  
+ batch_normalization_51 (Ba  (1, 1, 1, 32)                96        ['conv2d_51[0][0]']           
+ tchNormalization)                                                                                
+                                                                                                  
+ activation_51 (Activation)  (1, 1, 1, 32)                0         ['batch_normalization_51[0][0]
+                                                                    ']                            
+                                                                                                  
+ conv2d_55 (Conv2D)          (1, 1, 1, 16)                512       ['activation_51[0][0]']       
+                                                                                                  
+ batch_normalization_55 (Ba  (1, 1, 1, 16)                48        ['conv2d_55[0][0]']           
+ tchNormalization)                                                                                
+                                                                                                  
+ conv2d_53 (Conv2D)          (1, 1, 1, 16)                512       ['activation_51[0][0]']       
+                                                                                                  
+ activation_55 (Activation)  (1, 1, 1, 16)                0         ['batch_normalization_55[0][0]
+                                                                    ']                            
+                                                                                                  
+ batch_normalization_53 (Ba  (1, 1, 1, 16)                48        ['conv2d_53[0][0]']           
+ tchNormalization)                                                                                
+                                                                                                  
+ stream_27 (Stream)          (1, 1, 1, 16)                1344      ['activation_55[0][0]']       
+                                                                                                  
+ activation_53 (Activation)  (1, 1, 1, 16)                0         ['batch_normalization_53[0][0]
+                                                                    ']                            
+                                                                                                  
+ batch_normalization_56 (Ba  (1, 1, 1, 16)                48        ['stream_27[0][0]']           
+ tchNormalization)                                                                                
+                                                                                                  
+ conv2d_52 (Conv2D)          (1, 1, 1, 16)                512       ['activation_51[0][0]']       
+                                                                                                  
+ stream_26 (Stream)          (1, 1, 1, 16)                1344      ['activation_53[0][0]']       
+                                                                                                  
+ activation_56 (Activation)  (1, 1, 1, 16)                0         ['batch_normalization_56[0][0]
+                                                                    ']                            
+                                                                                                  
+ batch_normalization_52 (Ba  (1, 1, 1, 16)                48        ['conv2d_52[0][0]']           
+ tchNormalization)                                                                                
+                                                                                                  
+ batch_normalization_54 (Ba  (1, 1, 1, 16)                48        ['stream_26[0][0]']           
+ tchNormalization)                                                                                
+                                                                                                  
+ stream_28 (Stream)          (1, 1, 1, 16)                1344      ['activation_56[0][0]']       
+                                                                                                  
+ activation_52 (Activation)  (1, 1, 1, 16)                0         ['batch_normalization_52[0][0]
+                                                                    ']                            
+                                                                                                  
+ activation_54 (Activation)  (1, 1, 1, 16)                0         ['batch_normalization_54[0][0]
+                                                                    ']                            
+                                                                                                  
+ batch_normalization_57 (Ba  (1, 1, 1, 16)                48        ['stream_28[0][0]']           
+ tchNormalization)                                                                                
+                                                                                                  
+ strided_drop_14 (StridedDr  (1, 1, 1, 16)                0         ['activation_52[0][0]']       
+ op)                                                                                              
+                                                                                                  
+ strided_drop_15 (StridedDr  (1, 1, 1, 16)                0         ['activation_54[0][0]']       
+ op)                                                                                              
+                                                                                                  
+ activation_57 (Activation)  (1, 1, 1, 16)                0         ['batch_normalization_57[0][0]
+                                                                    ']                            
+                                                                                                  
+ concatenate_7 (Concatenate  (1, 1, 1, 48)                0         ['strided_drop_14[0][0]',     
+ )                                                                   'strided_drop_15[0][0]',     
+                                                                     'activation_57[0][0]']       
+                                                                                                  
+ conv2d_58 (Conv2D)          (1, 1, 1, 64)                3072      ['concatenate_7[0][0]']       
+                                                                                                  
+ batch_normalization_58 (Ba  (1, 1, 1, 64)                192       ['conv2d_58[0][0]']           
+ tchNormalization)                                                                                
+                                                                                                  
+ activation_58 (Activation)  (1, 1, 1, 64)                0         ['batch_normalization_58[0][0]
+                                                                    ']                            
+                                                                                                  
+ conv2d_62 (Conv2D)          (1, 1, 1, 16)                1024      ['activation_58[0][0]']       
+                                                                                                  
+ batch_normalization_62 (Ba  (1, 1, 1, 16)                48        ['conv2d_62[0][0]']           
+ tchNormalization)                                                                                
+                                                                                                  
+ conv2d_60 (Conv2D)          (1, 1, 1, 16)                1024      ['activation_58[0][0]']       
+                                                                                                  
+ activation_62 (Activation)  (1, 1, 1, 16)                0         ['batch_normalization_62[0][0]
+                                                                    ']                            
+                                                                                                  
+ batch_normalization_60 (Ba  (1, 1, 1, 16)                48        ['conv2d_60[0][0]']           
+ tchNormalization)                                                                                
+                                                                                                  
+ stream_30 (Stream)          (1, 1, 1, 16)                1344      ['activation_62[0][0]']       
+                                                                                                  
+ activation_60 (Activation)  (1, 1, 1, 16)                0         ['batch_normalization_60[0][0]
+                                                                    ']                            
+                                                                                                  
+ batch_normalization_63 (Ba  (1, 1, 1, 16)                48        ['stream_30[0][0]']           
+ tchNormalization)                                                                                
+                                                                                                  
+ conv2d_59 (Conv2D)          (1, 1, 1, 16)                1024      ['activation_58[0][0]']       
+                                                                                                  
+ stream_29 (Stream)          (1, 1, 1, 16)                1344      ['activation_60[0][0]']       
+                                                                                                  
+ activation_63 (Activation)  (1, 1, 1, 16)                0         ['batch_normalization_63[0][0]
+                                                                    ']                            
+                                                                                                  
+ batch_normalization_59 (Ba  (1, 1, 1, 16)                48        ['conv2d_59[0][0]']           
+ tchNormalization)                                                                                
+                                                                                                  
+ batch_normalization_61 (Ba  (1, 1, 1, 16)                48        ['stream_29[0][0]']           
+ tchNormalization)                                                                                
+                                                                                                  
+ stream_31 (Stream)          (1, 1, 1, 16)                1344      ['activation_63[0][0]']       
+                                                                                                  
+ activation_59 (Activation)  (1, 1, 1, 16)                0         ['batch_normalization_59[0][0]
+                                                                    ']                            
+                                                                                                  
+ activation_61 (Activation)  (1, 1, 1, 16)                0         ['batch_normalization_61[0][0]
+                                                                    ']                            
+                                                                                                  
+ batch_normalization_64 (Ba  (1, 1, 1, 16)                48        ['stream_31[0][0]']           
+ tchNormalization)                                                                                
+                                                                                                  
+ strided_drop_16 (StridedDr  (1, 1, 1, 16)                0         ['activation_59[0][0]']       
+ op)                                                                                              
+                                                                                                  
+ strided_drop_17 (StridedDr  (1, 1, 1, 16)                0         ['activation_61[0][0]']       
+ op)                                                                                              
+                                                                                                  
+ activation_64 (Activation)  (1, 1, 1, 16)                0         ['batch_normalization_64[0][0]
+                                                                    ']                            
+                                                                                                  
+ concatenate_8 (Concatenate  (1, 1, 1, 48)                0         ['strided_drop_16[0][0]',     
+ )                                                                   'strided_drop_17[0][0]',     
+                                                                     'activation_64[0][0]']       
+                                                                                                  
+ conv2d_65 (Conv2D)          (1, 1, 1, 96)                4608      ['concatenate_8[0][0]']       
+                                                                                                  
+ batch_normalization_65 (Ba  (1, 1, 1, 96)                288       ['conv2d_65[0][0]']           
+ tchNormalization)                                                                                
+                                                                                                  
+ activation_65 (Activation)  (1, 1, 1, 96)                0         ['batch_normalization_65[0][0]
+                                                                    ']                            
+                                                                                                  
+ stream_32 (Stream)          (1, 96)                      7104      ['activation_65[0][0]']       
+                                                                                                  
+ dropout_2 (Dropout)         (1, 96)                      0         ['stream_32[0][0]']           
+                                                                                                  
+ dense_2 (Dense)             (1, 1)                       97        ['dropout_2[0][0]']           
+                                                                                                  
+==================================================================================================
+Total params: 41161 (160.79 KB)
+Trainable params: 32353 (126.38 KB)
+Non-trainable params: 8808 (34.41 KB)
+__________________________________________________________________________________________________
