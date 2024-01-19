@@ -291,6 +291,11 @@ async def to_code(config):
             with open(model_config[CONF_PATH], "rb") as f:
                 data = f.read()
 
+        elif model_config[CONF_TYPE] == TYPE_HTTP:
+            path = _compute_local_file_path(model_config)
+            with open(path, "rb") as f:
+                data = f.read()
+
         rhs = [HexInt(x) for x in data]
         prog_arr = cg.progmem_array(config[CONF_RAW_DATA_ID], rhs)
         cg.add(var.set_model_start(prog_arr))
