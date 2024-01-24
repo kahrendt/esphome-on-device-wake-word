@@ -39,10 +39,8 @@ CODEOWNERS = ["@kahrendt", "@jesserockz"]
 DEPENDENCIES = ["microphone"]
 DOMAIN = "micro_wake_word"
 
-CONF_STREAMING_MODEL_PROBABILITY_CUTOFF = "streaming_model_probability_cutoff"
-CONF_STREAMING_MODEL_SLIDING_WINDOW_MEAN_LENGTH = (
-    "streaming_model_sliding_window_mean_length"
-)
+CONF_PROBABILITY_CUTOFF = "probability_cutoff"
+CONF_SLIDING_WINDOW_AVERAGE_SIZE = "sliding_window_average_size"
 CONF_ON_WAKE_WORD_DETECTED = "on_wake_word_detected"
 
 TYPE_HTTP = "http"
@@ -216,21 +214,22 @@ MODEL_SOURCE_SCHEMA = cv.Any(
     msg="Not a valid model name, local path, http(s) url, or github shorthand",
 )
 
-CONFIG_SCHEMA = cv.Schema(
-    {
-        cv.GenerateID(): cv.declare_id(MicroWakeWord),
-        cv.GenerateID(CONF_MICROPHONE): cv.use_id(microphone.Microphone),
-        cv.Optional(CONF_STREAMING_MODEL_PROBABILITY_CUTOFF, default=0.5): cv.float_,
-        cv.Optional(
-            CONF_STREAMING_MODEL_SLIDING_WINDOW_MEAN_LENGTH, default=10
-        ): cv.positive_int,
-        cv.Optional(CONF_ON_WAKE_WORD_DETECTED): automation.validate_automation(
-            single=True
-        ),
-        cv.Optional(CONF_MODEL): MODEL_SOURCE_SCHEMA,
-        cv.GenerateID(CONF_RAW_DATA_ID): cv.declare_id(cg.uint8),
-    }
-).extend(cv.COMPONENT_SCHEMA)
+CONFIG_SCHEMA = cv.All(
+    cv.Schema(
+        {
+            cv.GenerateID(): cv.declare_id(MicroWakeWord),
+            cv.GenerateID(CONF_MICROPHONE): cv.use_id(microphone.Microphone),
+            cv.Optional(CONF_PROBABILITY_CUTOFF, default=0.5): cv.float_,
+            cv.Optional(CONF_SLIDING_WINDOW_AVERAGE_SIZE, default=10): cv.positive_int,
+            cv.Optional(CONF_ON_WAKE_WORD_DETECTED): automation.validate_automation(
+                single=True
+            ),
+            cv.Optional(CONF_MODEL): MODEL_SOURCE_SCHEMA,
+            cv.GenerateID(CONF_RAW_DATA_ID): cv.declare_id(cg.uint8),
+        }
+    ).extend(cv.COMPONENT_SCHEMA),
+    cv.only_with_esp_idf,
+)
 
 
 async def to_code(config):
@@ -240,15 +239,9 @@ async def to_code(config):
     mic = await cg.get_variable(config[CONF_MICROPHONE])
     cg.add(var.set_microphone(mic))
 
+    cg.add(var.set_probability_cutoff(config[CONF_PROBABILITY_CUTOFF]))
     cg.add(
-        var.set_streaming_model_probability_cutoff(
-            config[CONF_STREAMING_MODEL_PROBABILITY_CUTOFF]
-        )
-    )
-    cg.add(
-        var.set_streaming_model_sliding_window_mean_length(
-            config[CONF_STREAMING_MODEL_SLIDING_WINDOW_MEAN_LENGTH]
-        )
+        var.set_sliding_window_average_size(config[CONF_SLIDING_WINDOW_AVERAGE_SIZE])
     )
 
     if on_wake_word_detection_config := config.get(CONF_ON_WAKE_WORD_DETECTED):
@@ -261,15 +254,7 @@ async def to_code(config):
     esp32.add_idf_component(
         name="esp-tflite-micro",
         repo="https://github.com/espressif/esp-tflite-micro",
-        # path="components",
-        # components=["esp-radar"],
     )
-    # esp32.add_idf_component(
-    #     name="esp-nn",
-    #     repo="https://github.com/espressif/esp-nn",
-    #     # path="components",
-    #     # components=["esp-radar"],
-    # )
 
     cg.add_build_flag("-DTF_LITE_STATIC_MEMORY")
     cg.add_build_flag("-DTF_LITE_DISABLE_X86_NEON")

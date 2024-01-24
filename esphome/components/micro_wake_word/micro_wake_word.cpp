@@ -8,10 +8,7 @@
 
 #include <tensorflow/lite/core/c/common.h>
 #include <tensorflow/lite/micro/micro_interpreter.h>
-#include <tensorflow/lite/micro/micro_log.h>
 #include <tensorflow/lite/micro/micro_mutable_op_resolver.h>
-#include <tensorflow/lite/micro/system_setup.h>
-#include <tensorflow/lite/schema/schema_generated.h>
 
 #include <cmath>
 
@@ -21,7 +18,7 @@ namespace micro_wake_word {
 static const char *const TAG = "micro_wake_word";
 
 static const size_t SAMPLE_RATE_HZ = 16000;  // 16 kHz
-static const size_t BUFFER_LENGTH = 500;     // 1 seconds
+static const size_t BUFFER_LENGTH = 500;     // 0.5 seconds
 static const size_t BUFFER_SIZE = SAMPLE_RATE_HZ / 1000 * BUFFER_LENGTH;
 static const size_t INPUT_BUFFER_SIZE = 32 * SAMPLE_RATE_HZ / 1000;  // 32ms * 16kHz / 1000ms
 
@@ -103,7 +100,7 @@ void MicroWakeWord::loop() {
       break;
     case State::DETECTING_WAKE_WORD:
       this->read_microphone_();
-      if (this->detect_wakeword()) {
+      if (this->detect_wake_word_()) {
         ESP_LOGD(TAG, "Wake Word Detected");
         this->detected_ = true;
         this->set_state_(State::STOP_MICROPHONE);
@@ -186,7 +183,7 @@ bool MicroWakeWord::initialize_models() {
     return false;
   }
 
-  this->preprocessor_audio_buffer_ = audio_samples_allocator.allocate(MAX_AUDIO_SAMPLE_SIZE * 32);
+  this->preprocessor_audio_buffer_ = audio_samples_allocator.allocate(SAMPLE_DURATION_COUNT);
   if (this->preprocessor_audio_buffer_ == nullptr) {
     ESP_LOGE(TAG, "Could not allocate the audio preprocessor's buffer.");
     return false;
@@ -242,7 +239,31 @@ bool MicroWakeWord::initialize_models() {
     return false;
   }
 
-  this->recent_streaming_probabilities_.resize(this->streaming_model_sliding_window_mean_length_, 0.0);
+  // Verify input tensor matches expected values
+  TfLiteTensor *input = this->streaming_interpreter_->input(0);
+  if ((input->dims->size != 3) || (input->dims->data[0] != 1) || (input->dims->data[0] != 1) ||
+      (input->dims->data[1] != 1) || (input->dims->data[2] != PREPROCESSOR_FEATURE_SIZE)) {
+    ESP_LOGE(TAG, "Wake word detection model tensor input dimensions is not 1x1x%u", input->dims->data[2]);
+    return false;
+  }
+
+  if (input->type != kTfLiteInt8) {
+    ESP_LOGE(TAG, "Wake word detection model tensor input is not int8.");
+    return false;
+  }
+
+  // Verify output tensor matches expected values
+  TfLiteTensor *output = this->streaming_interpreter_->output(0);
+  if ((output->dims->size != 2) || (output->dims->data[0] != 1) || (output->dims->data[1] != 1)) {
+    ESP_LOGE(TAG, "Wake word detection model tensor output dimensions is not 1x1.");
+  }
+
+  if (output->type != kTfLiteUInt8) {
+    ESP_LOGE(TAG, "Wake word detection model tensor input is not uint8.");
+    return false;
+  }
+
+  this->recent_streaming_probabilities_.resize(this->sliding_window_average_size_, 0.0);
 
   return true;
 }
@@ -289,18 +310,20 @@ float MicroWakeWord::perform_streaming_inference_() {
   return static_cast<float>(output->data.uint8[0]) / 255.0;
 }
 
-bool MicroWakeWord::detect_wakeword() {
+bool MicroWakeWord::detect_wake_word_() {
+  // Preprocess the newest audio samples into features
   if (!this->update_features_()) {
     return false;
   }
 
-  uint32_t streaming_length = micros();
+  // Perform inference
+  uint32_t streaming_size = micros();
   float streaming_prob = this->perform_streaming_inference_();
 
   // Add the most recent probability to the sliding window
   this->recent_streaming_probabilities_[this->last_n_index_] = streaming_prob;
   ++this->last_n_index_;
-  if (this->last_n_index_ == this->streaming_model_sliding_window_mean_length_)
+  if (this->last_n_index_ == this->sliding_window_average_size_)
     this->last_n_index_ = 0;
 
   float sum = 0.0;
@@ -308,15 +331,17 @@ bool MicroWakeWord::detect_wakeword() {
     sum += prob;
   }
 
-  float sliding_window_average = sum / static_cast<float>(this->streaming_model_sliding_window_mean_length_);
+  float sliding_window_average = sum / static_cast<float>(this->sliding_window_average_size_);
 
+  // Ensure we have enough samples since the last positive detection
   this->ignore_windows_ = std::min(this->ignore_windows_ + 1, 0);
   if (this->ignore_windows_ < 0) {
     return false;
   }
 
-  if (sliding_window_average > this->streaming_model_probability_cutoff_) {
-    this->ignore_windows_ = -SPECTROGRAM_LENGTH;
+  // Detect the wake word if the sliding window average is above the cutoff
+  if (sliding_window_average > this->probability_cutoff_) {
+    this->ignore_windows_ = -MIN_SLICES_BEFORE_DETECTION;
     for (auto &prob : this->recent_streaming_probabilities_) {
       prob = 0;
     }
@@ -326,14 +351,13 @@ bool MicroWakeWord::detect_wakeword() {
   return false;
 }
 
-void MicroWakeWord::set_streaming_model_sliding_window_mean_length(size_t length) {
-  this->streaming_model_sliding_window_mean_length_ = length;
-  this->recent_streaming_probabilities_.resize(this->streaming_model_sliding_window_mean_length_, 0.0);
+void MicroWakeWord::set_sliding_window_average_size(size_t size) {
+  this->sliding_window_average_size_ = size;
+  this->recent_streaming_probabilities_.resize(this->sliding_window_average_size_, 0.0);
 }
 
 bool MicroWakeWord::slice_available_() {
   size_t available = this->ring_buffer_->available();
-  // ESP_LOGD(TAG, "slices available: %u", available / (NEW_SAMPLES_TO_GET * sizeof(int16_t)));
 
   if (available > NEW_SAMPLES_TO_GET * sizeof(int16_t)) {
     return true;

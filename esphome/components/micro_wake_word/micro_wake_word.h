@@ -8,19 +8,10 @@
 
 #include "tensorflow/lite/core/c/common.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
-#include "tensorflow/lite/micro/micro_log.h"
 #include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
-#include "tensorflow/lite/micro/system_setup.h"
-#include "tensorflow/lite/schema/schema_generated.h"
 
 namespace esphome {
 namespace micro_wake_word {
-
-// Constants used for audio preprocessor model
-//
-// The number of slices in the spectrogram when trained IMPLEMENTATION_DETAILS: This can depend on the model, but
-// doesn't directly affect any of the inference code
-static const uint8_t SPECTROGRAM_LENGTH = 74;
 
 // The following are dictated by the preprocessor model
 //
@@ -32,17 +23,24 @@ static const uint8_t FEATURE_STRIDE_MS = 20;
 static const uint8_t FEATURE_DURATION_MS = 30;
 // Audio sample frequency in hertz
 static const uint16_t AUDIO_SAMPLE_FREQUENCY = 16000;
+// The number of old audio samples that are saved to be part of the next feature window
 static const uint16_t HISTORY_SAMPLES_TO_KEEP =
     ((FEATURE_DURATION_MS - FEATURE_STRIDE_MS) * (AUDIO_SAMPLE_FREQUENCY / 1000));
+// The number of new audio samples to receive to be included with the next feature window
 static const uint16_t NEW_SAMPLES_TO_GET = (FEATURE_STRIDE_MS * (AUDIO_SAMPLE_FREQUENCY / 1000));
+// The total number of audio samples included in the feature window
 static const uint16_t SAMPLE_DURATION_COUNT = FEATURE_DURATION_MS * AUDIO_SAMPLE_FREQUENCY / 1000;
-static const uint16_t MAX_AUDIO_SAMPLE_SIZE = 512;
+// Number of bytes in memory needed for the preprocessor arena
+static const uint32_t PREPROCESSOR_ARENA_SIZE = 9528;
 
-// Constants used for setting up tensor arenas
-// TODO: Optimize these values; they are currently much larger than needed
-static const uint32_t STREAMING_MODEL_ARENA_SIZE = 1024 * 1000;
-static const uint32_t STREAMING_MODEL_VARIABLE_ARENA_SIZE = 10 * 1000;
-static const uint32_t PREPROCESSOR_ARENA_SIZE = 16 * 1024;
+// The following configure the streaming wake word model
+//
+// The number of audio slices to process before accepting a positive detection
+static const uint8_t MIN_SLICES_BEFORE_DETECTION = 74;
+
+// Number of bytes in memory needed for the streaming wake word model
+static const uint32_t STREAMING_MODEL_ARENA_SIZE = 64000;
+static const uint32_t STREAMING_MODEL_VARIABLE_ARENA_SIZE = 1024;
 
 enum State {
   IDLE,
@@ -66,19 +64,9 @@ class MicroWakeWord : public Component {
 
   bool initialize_models();
 
-  /** Detects if wake word has been said
-   *
-   * If enough audio samples are available, it will generate one slice of new features.
-   * If the streaming model predicts the wake word, then the nonstreaming model confirms it.
-   * @param ring_Buffer Ring buffer containing raw audio samples
-   * @return True if the wake word is detected, false otherwise
-   */
-  bool detect_wakeword();
-
-  void set_streaming_model_probability_cutoff(float streaming_model_probability_cutoff) {
-    this->streaming_model_probability_cutoff_ = streaming_model_probability_cutoff;
-  }
-  void set_streaming_model_sliding_window_mean_length(size_t length);
+  // Increasing either of these will reduce the rate of false acceptances while increasing the false rejection rate
+  void set_probability_cutoff(float probability_cutoff) { this->probability_cutoff_ = probability_cutoff; }
+  void set_sliding_window_average_size(size_t size);
 
   void set_microphone(microphone::Microphone *microphone) { this->microphone_ = microphone; }
 
@@ -109,16 +97,12 @@ class MicroWakeWord : public Component {
   std::vector<float> recent_streaming_probabilities_;
   size_t last_n_index_{0};
 
-  // Increasing either of these will reduce the rate of false acceptances while increasing the false rejection rate
-  // IMPLEMENTATION DETAILS: Allow setting defaults specific to each model
-  float streaming_model_probability_cutoff_{0.5};
-  size_t streaming_model_sliding_window_mean_length_{10};
+  float probability_cutoff_{0.5};
+  size_t sliding_window_average_size_{10};
 
-  // When the wake word detection first starts or after the word has been detected once, we ignore the first trained
-  // spectrogram's length of probabilities
-  // IMPLEMENTATION DETAILS: A model should be able to set this value, as it may have been trained on a shorter or
-  // longer spectrogram
-  int16_t ignore_windows_{-SPECTROGRAM_LENGTH};
+  // When the wake word detection first starts or after the word has been detected once, we ignore this many audio
+  // feature slices before accepting a positive detection again
+  int16_t ignore_windows_{-MIN_SLICES_BEFORE_DETECTION};
 
   uint8_t *streaming_var_arena_{nullptr};
   uint8_t *streaming_tensor_arena_{nullptr};
@@ -132,6 +116,15 @@ class MicroWakeWord : public Component {
   int16_t *preprocessor_stride_buffer_;
 
   bool detected_{false};
+
+  /** Detects if wake word has been said
+   *
+   * If enough audio samples are available, it will generate one slice of new features.
+   * If the streaming model predicts the wake word, then the nonstreaming model confirms it.
+   * @param ring_Buffer Ring buffer containing raw audio samples
+   * @return True if the wake word is detected, false otherwise
+   */
+  bool detect_wake_word_();
 
   /// @brief Returns true if there are enough audio samples in the buffer to generate another slice of features
   bool slice_available_();
