@@ -1,0 +1,1 @@
+Namespace(training_config='training_parameters.yaml', train=1, restore_checkpoint=1, verbosity=0, model_name='inception', cnn1_filters='32', cnn1_kernel_sizes='5', cnn1_subspectral_groups='4', cnn2_filters1='24,24,24', cnn2_filters2='32,64,96', cnn2_kernel_sizes='3,5,5', cnn2_subspectral_groups='1,1,1', cnn2_use_one_step_stream=True, dropout=0.8, bn_scale=0)
