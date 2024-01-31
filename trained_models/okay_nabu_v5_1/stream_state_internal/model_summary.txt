@@ -1,0 +1,251 @@
+Model: "model_2"
+__________________________________________________________________________________________________
+ Layer (type)                Output Shape                 Param #   Connected to                  
+==================================================================================================
+ input_audio (InputLayer)    [(1, 1, 40)]                 0         []                            
+                                                                                                  
+ spec_augment_2 (SpecAugmen  (1, 1, 40)                   0         ['input_audio[0][0]']         
+ t)                                                                                               
+                                                                                                  
+ tf.expand_dims_2 (TFOpLamb  (1, 1, 1, 40)                0         ['spec_augment_2[0][0]']      
+ da)                                                                                              
+                                                                                                  
+ stream_22 (Stream)          (1, 1, 1, 32)                6600      ['tf.expand_dims_2[0][0]']    
+                                                                                                  
+ sub_spectral_normalization  (1, 1, 1, 32)                16        ['stream_22[0][0]']           
+ _44 (SubSpectralNormalizat                                                                       
+ ion)                                                                                             
+                                                                                                  
+ activation_44 (Activation)  (1, 1, 1, 32)                0         ['sub_spectral_normalization_4
+                                                                    4[0][0]']                     
+                                                                                                  
+ conv2d_48 (Conv2D)          (1, 1, 1, 24)                768       ['activation_44[0][0]']       
+                                                                                                  
+ sub_spectral_normalization  (1, 1, 1, 24)                96        ['conv2d_48[0][0]']           
+ _48 (SubSpectralNormalizat                                                                       
+ ion)                                                                                             
+                                                                                                  
+ conv2d_46 (Conv2D)          (1, 1, 1, 24)                768       ['activation_44[0][0]']       
+                                                                                                  
+ activation_48 (Activation)  (1, 1, 1, 24)                0         ['sub_spectral_normalization_4
+                                                                    8[0][0]']                     
+                                                                                                  
+ sub_spectral_normalization  (1, 1, 1, 24)                96        ['conv2d_46[0][0]']           
+ _46 (SubSpectralNormalizat                                                                       
+ ion)                                                                                             
+                                                                                                  
+ stream_24 (Stream)          (1, 1, 1, 24)                1776      ['activation_48[0][0]']       
+                                                                                                  
+ activation_46 (Activation)  (1, 1, 1, 24)                0         ['sub_spectral_normalization_4
+                                                                    6[0][0]']                     
+                                                                                                  
+ sub_spectral_normalization  (1, 1, 1, 24)                96        ['stream_24[0][0]']           
+ _49 (SubSpectralNormalizat                                                                       
+ ion)                                                                                             
+                                                                                                  
+ conv2d_45 (Conv2D)          (1, 1, 1, 24)                768       ['activation_44[0][0]']       
+                                                                                                  
+ stream_23 (Stream)          (1, 1, 1, 24)                1776      ['activation_46[0][0]']       
+                                                                                                  
+ activation_49 (Activation)  (1, 1, 1, 24)                0         ['sub_spectral_normalization_4
+                                                                    9[0][0]']                     
+                                                                                                  
+ sub_spectral_normalization  (1, 1, 1, 24)                96        ['conv2d_45[0][0]']           
+ _45 (SubSpectralNormalizat                                                                       
+ ion)                                                                                             
+                                                                                                  
+ sub_spectral_normalization  (1, 1, 1, 24)                96        ['stream_23[0][0]']           
+ _47 (SubSpectralNormalizat                                                                       
+ ion)                                                                                             
+                                                                                                  
+ stream_25 (Stream)          (1, 1, 1, 24)                1776      ['activation_49[0][0]']       
+                                                                                                  
+ activation_45 (Activation)  (1, 1, 1, 24)                0         ['sub_spectral_normalization_4
+                                                                    5[0][0]']                     
+                                                                                                  
+ activation_47 (Activation)  (1, 1, 1, 24)                0         ['sub_spectral_normalization_4
+                                                                    7[0][0]']                     
+                                                                                                  
+ sub_spectral_normalization  (1, 1, 1, 24)                96        ['stream_25[0][0]']           
+ _50 (SubSpectralNormalizat                                                                       
+ ion)                                                                                             
+                                                                                                  
+ strided_drop_12 (StridedDr  (1, 1, 1, 24)                0         ['activation_45[0][0]']       
+ op)                                                                                              
+                                                                                                  
+ strided_drop_13 (StridedDr  (1, 1, 1, 24)                0         ['activation_47[0][0]']       
+ op)                                                                                              
+                                                                                                  
+ activation_50 (Activation)  (1, 1, 1, 24)                0         ['sub_spectral_normalization_5
+                                                                    0[0][0]']                     
+                                                                                                  
+ concatenate_6 (Concatenate  (1, 1, 1, 72)                0         ['strided_drop_12[0][0]',     
+ )                                                                   'strided_drop_13[0][0]',     
+                                                                     'activation_50[0][0]']       
+                                                                                                  
+ conv2d_51 (Conv2D)          (1, 1, 1, 32)                2304      ['concatenate_6[0][0]']       
+                                                                                                  
+ sub_spectral_normalization  (1, 1, 1, 32)                128       ['conv2d_51[0][0]']           
+ _51 (SubSpectralNormalizat                                                                       
+ ion)                                                                                             
+                                                                                                  
+ activation_51 (Activation)  (1, 1, 1, 32)                0         ['sub_spectral_normalization_5
+                                                                    1[0][0]']                     
+                                                                                                  
+ conv2d_55 (Conv2D)          (1, 1, 1, 24)                768       ['activation_51[0][0]']       
+                                                                                                  
+ sub_spectral_normalization  (1, 1, 1, 24)                96        ['conv2d_55[0][0]']           
+ _55 (SubSpectralNormalizat                                                                       
+ ion)                                                                                             
+                                                                                                  
+ conv2d_53 (Conv2D)          (1, 1, 1, 24)                768       ['activation_51[0][0]']       
+                                                                                                  
+ activation_55 (Activation)  (1, 1, 1, 24)                0         ['sub_spectral_normalization_5
+                                                                    5[0][0]']                     
+                                                                                                  
+ sub_spectral_normalization  (1, 1, 1, 24)                96        ['conv2d_53[0][0]']           
+ _53 (SubSpectralNormalizat                                                                       
+ ion)                                                                                             
+                                                                                                  
+ stream_27 (Stream)          (1, 1, 1, 24)                2976      ['activation_55[0][0]']       
+                                                                                                  
+ activation_53 (Activation)  (1, 1, 1, 24)                0         ['sub_spectral_normalization_5
+                                                                    3[0][0]']                     
+                                                                                                  
+ sub_spectral_normalization  (1, 1, 1, 24)                96        ['stream_27[0][0]']           
+ _56 (SubSpectralNormalizat                                                                       
+ ion)                                                                                             
+                                                                                                  
+ conv2d_52 (Conv2D)          (1, 1, 1, 24)                768       ['activation_51[0][0]']       
+                                                                                                  
+ stream_26 (Stream)          (1, 1, 1, 24)                2976      ['activation_53[0][0]']       
+                                                                                                  
+ activation_56 (Activation)  (1, 1, 1, 24)                0         ['sub_spectral_normalization_5
+                                                                    6[0][0]']                     
+                                                                                                  
+ sub_spectral_normalization  (1, 1, 1, 24)                96        ['conv2d_52[0][0]']           
+ _52 (SubSpectralNormalizat                                                                       
+ ion)                                                                                             
+                                                                                                  
+ sub_spectral_normalization  (1, 1, 1, 24)                96        ['stream_26[0][0]']           
+ _54 (SubSpectralNormalizat                                                                       
+ ion)                                                                                             
+                                                                                                  
+ stream_28 (Stream)          (1, 1, 1, 24)                2976      ['activation_56[0][0]']       
+                                                                                                  
+ activation_52 (Activation)  (1, 1, 1, 24)                0         ['sub_spectral_normalization_5
+                                                                    2[0][0]']                     
+                                                                                                  
+ activation_54 (Activation)  (1, 1, 1, 24)                0         ['sub_spectral_normalization_5
+                                                                    4[0][0]']                     
+                                                                                                  
+ sub_spectral_normalization  (1, 1, 1, 24)                96        ['stream_28[0][0]']           
+ _57 (SubSpectralNormalizat                                                                       
+ ion)                                                                                             
+                                                                                                  
+ strided_drop_14 (StridedDr  (1, 1, 1, 24)                0         ['activation_52[0][0]']       
+ op)                                                                                              
+                                                                                                  
+ strided_drop_15 (StridedDr  (1, 1, 1, 24)                0         ['activation_54[0][0]']       
+ op)                                                                                              
+                                                                                                  
+ activation_57 (Activation)  (1, 1, 1, 24)                0         ['sub_spectral_normalization_5
+                                                                    7[0][0]']                     
+                                                                                                  
+ concatenate_7 (Concatenate  (1, 1, 1, 72)                0         ['strided_drop_14[0][0]',     
+ )                                                                   'strided_drop_15[0][0]',     
+                                                                     'activation_57[0][0]']       
+                                                                                                  
+ conv2d_58 (Conv2D)          (1, 1, 1, 64)                4608      ['concatenate_7[0][0]']       
+                                                                                                  
+ sub_spectral_normalization  (1, 1, 1, 64)                256       ['conv2d_58[0][0]']           
+ _58 (SubSpectralNormalizat                                                                       
+ ion)                                                                                             
+                                                                                                  
+ activation_58 (Activation)  (1, 1, 1, 64)                0         ['sub_spectral_normalization_5
+                                                                    8[0][0]']                     
+                                                                                                  
+ conv2d_62 (Conv2D)          (1, 1, 1, 24)                1536      ['activation_58[0][0]']       
+                                                                                                  
+ sub_spectral_normalization  (1, 1, 1, 24)                96        ['conv2d_62[0][0]']           
+ _62 (SubSpectralNormalizat                                                                       
+ ion)                                                                                             
+                                                                                                  
+ conv2d_60 (Conv2D)          (1, 1, 1, 24)                1536      ['activation_58[0][0]']       
+                                                                                                  
+ activation_62 (Activation)  (1, 1, 1, 24)                0         ['sub_spectral_normalization_6
+                                                                    2[0][0]']                     
+                                                                                                  
+ sub_spectral_normalization  (1, 1, 1, 24)                96        ['conv2d_60[0][0]']           
+ _60 (SubSpectralNormalizat                                                                       
+ ion)                                                                                             
+                                                                                                  
+ stream_30 (Stream)          (1, 1, 1, 24)                2976      ['activation_62[0][0]']       
+                                                                                                  
+ activation_60 (Activation)  (1, 1, 1, 24)                0         ['sub_spectral_normalization_6
+                                                                    0[0][0]']                     
+                                                                                                  
+ sub_spectral_normalization  (1, 1, 1, 24)                96        ['stream_30[0][0]']           
+ _63 (SubSpectralNormalizat                                                                       
+ ion)                                                                                             
+                                                                                                  
+ conv2d_59 (Conv2D)          (1, 1, 1, 24)                1536      ['activation_58[0][0]']       
+                                                                                                  
+ stream_29 (Stream)          (1, 1, 1, 24)                2976      ['activation_60[0][0]']       
+                                                                                                  
+ activation_63 (Activation)  (1, 1, 1, 24)                0         ['sub_spectral_normalization_6
+                                                                    3[0][0]']                     
+                                                                                                  
+ sub_spectral_normalization  (1, 1, 1, 24)                96        ['conv2d_59[0][0]']           
+ _59 (SubSpectralNormalizat                                                                       
+ ion)                                                                                             
+                                                                                                  
+ sub_spectral_normalization  (1, 1, 1, 24)                96        ['stream_29[0][0]']           
+ _61 (SubSpectralNormalizat                                                                       
+ ion)                                                                                             
+                                                                                                  
+ stream_31 (Stream)          (1, 1, 1, 24)                2976      ['activation_63[0][0]']       
+                                                                                                  
+ activation_59 (Activation)  (1, 1, 1, 24)                0         ['sub_spectral_normalization_5
+                                                                    9[0][0]']                     
+                                                                                                  
+ activation_61 (Activation)  (1, 1, 1, 24)                0         ['sub_spectral_normalization_6
+                                                                    1[0][0]']                     
+                                                                                                  
+ sub_spectral_normalization  (1, 1, 1, 24)                96        ['stream_31[0][0]']           
+ _64 (SubSpectralNormalizat                                                                       
+ ion)                                                                                             
+                                                                                                  
+ strided_drop_16 (StridedDr  (1, 1, 1, 24)                0         ['activation_59[0][0]']       
+ op)                                                                                              
+                                                                                                  
+ strided_drop_17 (StridedDr  (1, 1, 1, 24)                0         ['activation_61[0][0]']       
+ op)                                                                                              
+                                                                                                  
+ activation_64 (Activation)  (1, 1, 1, 24)                0         ['sub_spectral_normalization_6
+                                                                    4[0][0]']                     
+                                                                                                  
+ concatenate_8 (Concatenate  (1, 1, 1, 72)                0         ['strided_drop_16[0][0]',     
+ )                                                                   'strided_drop_17[0][0]',     
+                                                                     'activation_64[0][0]']       
+                                                                                                  
+ conv2d_65 (Conv2D)          (1, 1, 1, 96)                6912      ['concatenate_8[0][0]']       
+                                                                                                  
+ sub_spectral_normalization  (1, 1, 1, 96)                384       ['conv2d_65[0][0]']           
+ _65 (SubSpectralNormalizat                                                                       
+ ion)                                                                                             
+                                                                                                  
+ activation_65 (Activation)  (1, 1, 1, 96)                0         ['sub_spectral_normalization_6
+                                                                    5[0][0]']                     
+                                                                                                  
+ stream_32 (Stream)          (1, 7104)                    7104      ['activation_65[0][0]']       
+                                                                                                  
+ dropout_2 (Dropout)         (1, 7104)                    0         ['stream_32[0][0]']           
+                                                                                                  
+ dense_2 (Dense)             (1, 1)                       7105      ['dropout_2[0][0]']           
+                                                                                                  
+==================================================================================================
+Total params: 69545 (271.66 KB)
+Trainable params: 60265 (235.41 KB)
+Non-trainable params: 9280 (36.25 KB)
+__________________________________________________________________________________________________
