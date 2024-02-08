@@ -1,0 +1,12 @@
+{
+  "type": "micro",
+  "wake_word": "okay nabu",
+  "author": "Kevin Ahrendt",
+  "website": "https://www.kevinahrendt.com/",
+  "model": "./okay_nabu_v5_1/tflite_stream_state_internal_quant/stream_state_internal_quantize.tflite",
+  "version": 1,
+  "micro": {
+    "probability_cutoff": 0.5,
+    "sliding_window_average_size": 10
+  }
+}
