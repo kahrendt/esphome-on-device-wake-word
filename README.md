@@ -1,4 +1,8 @@
-# On Device Wake Word Detection for ESPHome's Voice Assistant Component
+# ESPHome 2024.2 officially includes the ``micro_wake_word`` component. The latest training framework is available in the [microWakeWord repository](https://github.com/kahrendt/microWakeWord). All future updates will happen in microWakeWord and ESPHome directly, so this repository is now archived.
+
+
+
+## On Device Wake Word Detection for ESPHome's Voice Assistant Component
 This component implements wake word detection on the ESPHome device itself. It currently implements "Hey Jarvis" as the wake word, but any custom word/phrase is possible after training a new model. The ``micro_wake_word`` component starts the assist pipeline immediately after detecting the wake word without using Wyoming-openWakeWord.
 
 It works well with comparable performance to openWakeWord. The detection latency is extremely low, nearly always faster than an ESP32 device using the openWakeWord pipeline.
@@ -9,11 +13,11 @@ The target devices are ESP32-S3 based with external PSRAM. It may run on a regul
 
 **It is currently not trivial to train a new model. I am developing a custom training framework to make the process much easier!**
 
-## YAML Configuration
+### YAML Configuration
 
 See the [example YAML files](https://github.com/kahrendt/esphome-on-device-wake-word/tree/dev/example_esphome_yaml) for various S3 box models.
 
-## Benchmarks
+### Benchmarks
 
 Benchmarking and comparing wake word models is challenging. It is hard to account for all the different operating environments. [Picovoice](https://github.com/Picovoice/wake-word-benchmark) has provided one benchmark for at least one point of comparison.
 
@@ -24,7 +28,7 @@ Graph Credit: [dscripka](https://github.com/dscripka)
 
 For a more rigorous false acceptance metric, we tested the "Hey Jarvis" on the [Dinner Party Corpus](https://www.amazon.science/publications/dipco-dinner-party-corpus) dataset. The component's default configuration values result in a 0.187 false accept rate per hour.
 
-## Detection Process
+### Detection Process
 
 The component detects the wake word in two stages. Raw audio data is processed into 40 features every 20 ms. Several of these features construct a spectrogram. A streaming inference model only uses the newest slice of feature data as input to detect the wake word. If the model consistently predicts the wake word over multiple windows, then the component starts the assist pipeline.
 
@@ -32,17 +36,17 @@ The first stage processes the raw monochannel audio data at a sample rate of 16 
 
 The streaming model performs inferences every 20 ms on the newest audio stride. The model is based on an [inception neural network](https://towardsdatascience.com/a-simple-guide-to-the-versions-of-the-inception-network-7fc52b863202?gi=6bc760f44aef) converted for streaming. It executes an inference in under 10 ms on an ESP32-S3, much faster than the 20 ms stride length. Streaming and training the model uses modified open-sourced code from [Google Research](https://github.com/google-research/google-research/tree/master/kws_streaming) found in the paper [Streaming Keyword Spotting on Mobile Devices](https://arxiv.org/pdf/2005.06720.pdf) by Rykabov, Kononenko, Subrahmanya, Visontai, and Laurenzo.
 
-## Next Steps and Improvement Plans
+### Next Steps and Improvement Plans
 
   - Make the model training process more straightforward.
   - Generate and provide more pre-trained models.
   - Make it easy to switch between models in the YAML config.
 
-## Model Training Process
+### Model Training Process
 
 We generate positive and negative samples using [openWakeWord](https://github.com/dscripka/openWakeWord), which relies on [Piper sample generator](https://github.com/rhasspy/piper-sample-generator). We also use openWakeWord's data tools to augment the positive and negative sample. In addition, we add other sources of negative data such as music or prerecorded background noise. Then, we train the two models using code from [Google Research](https://github.com/google-research/google-research/tree/master/kws_streaming). The streaming model is an inception neural network converted for streaming.
 
-## Acknowledgements
+### Acknowledgements
 
 I am very thankful for many people's support to help improve this! Thank you, in particular, to the following individuals and groups for providing feedback, collaboration, and developmental support:
 
